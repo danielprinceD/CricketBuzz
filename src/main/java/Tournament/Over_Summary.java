@@ -33,7 +33,6 @@ public class Over_Summary extends HttpServlet {
 	    String runParam = request.getParameter("run");
 	    String wktParam = request.getParameter("wkt");
 
-	    // Validate the input parameters
 	    if (fixtureIdParam == null || overCountParam == null || runParam == null || wktParam == null) {
 	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing parameters.");
 	        return;

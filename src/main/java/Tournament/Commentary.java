@@ -49,7 +49,6 @@ public class Commentary extends HttpServlet {
             return;
         }
 
-        // SQL query with joins to get player details for batter_id, bowler_id, and catcher_id
         String sql = "SELECT c.fixture_id, c.over_count, c.ball, c.run_type, " +
                      "c.commentary_text, " +
                      "batter.id AS batter_id, batter.name AS batter_name, batter.role AS batter_role, batter.rating AS batter_rating, " +
@@ -79,7 +78,6 @@ public class Commentary extends HttpServlet {
                 jsonObject.put("commentary_text", rs.getString("commentary_text"));
                 jsonObject.put("date_time", rs.getTimestamp("date_time"));
 
-                // Batter details
                 JSONObject batter = new JSONObject();
                 batter.put("id", rs.getInt("batter_id"));
                 batter.put("name", rs.getString("batter_name"));
@@ -87,7 +85,6 @@ public class Commentary extends HttpServlet {
                 batter.put("rating", rs.getInt("batter_rating"));
                 jsonObject.put("batter", batter);
 
-                // Bowler details
                 JSONObject bowler = new JSONObject();
                 bowler.put("id", rs.getInt("bowler_id"));
                 bowler.put("name", rs.getString("bowler_name"));
@@ -95,7 +92,6 @@ public class Commentary extends HttpServlet {
                 bowler.put("rating", rs.getInt("bowler_rating"));
                 jsonObject.put("bowler", bowler);
 
-                // Catcher details
                 int catcherId = rs.getInt("catcher_id");
                 if (!rs.wasNull()) {
                     JSONObject catcher = new JSONObject();

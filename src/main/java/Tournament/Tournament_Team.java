@@ -72,7 +72,6 @@ public class Tournament_Team extends HttpServlet {
         }
     }
 
-    // Handle PUT request to update a record by tour_id
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -124,7 +123,7 @@ public class Tournament_Team extends HttpServlet {
             return;
         }
 
-        String query = "SELECT t.team_id, t.name , t.category , tt.points , tt.net_run_rate " +
+        String query = "SELECT t.team_id, t.name , t.name , t.category , tt.points , tt.net_run_rate " +
                        "FROM team t " +
                        "JOIN tournament_team tt ON t.team_id = tt.team_id " +
                        "WHERE tt.tour_id = ?";
@@ -140,6 +139,7 @@ public class Tournament_Team extends HttpServlet {
             while (rs.next()) {
                 JSONObject teamObject = new JSONObject();
                 teamObject.put("team_id", rs.getInt("team_id"));
+                teamObject.put("team_name", rs.getString("name"));
                 teamObject.put("category", rs.getString("category"));
                 teamObject.put("points", rs.getInt("points"));
                 teamObject.put("net_run_rate", rs.getDouble("net_run_rate"));

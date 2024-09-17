@@ -54,7 +54,22 @@ public class Fixture extends HttpServlet {
             throws ServletException, IOException {
     	 int tourId = Integer.parseInt(request.getParameter("tour_id"));
 
-         String sql = "SELECT * FROM fixture WHERE tour_id = ?";
+    	 String sql = "SELECT IFNULL(md.result , '' ) AS result, f.fixture_id, f.tour_id, tour.name AS tour_name, "
+    	            + "t1.team_id AS team1_id, t1.name AS team1_name, p1.name AS team1_captain, "
+    	            + "t2.team_id AS team2_id, t2.name AS team2_name, p2.name AS team2_captain, "
+    	            + "IFNULL(v.venue_id,'NOT SET') AS venue_id, IFNULL(v.stadium , 'NOT SET') AS venue_name, IFNULL(v.location, 'NOT_SET') AS venue_location, "
+    	            + "IFNULL(winner_team.name, 'No winner') AS winner_team_name, f.match_date "
+    	            + "FROM fixture f "
+    	            + "LEFT JOIN match_details md ON f.fixture_id = md.fixture_id "
+    	            + "JOIN tournament tour ON f.tour_id = tour.tour_id "
+    	            + "JOIN team t1 ON f.team1_id = t1.team_id "
+    	            + "JOIN player p1 ON t1.captain_id = p1.id "
+    	            + "JOIN team t2 ON f.team2_id = t2.team_id "
+    	            + "JOIN player p2 ON t2.captain_id = p2.id "
+    	            + "JOIN venue v ON f.venue_id = v.venue_id "
+    	            + "LEFT JOIN team winner_team ON f.winner_id = winner_team.team_id "
+    	            + "WHERE f.tour_id = ?";
+         
          response.setContentType("application/json");
          response.setCharacterEncoding("UTF-8");
 
@@ -68,13 +83,27 @@ public class Fixture extends HttpServlet {
              while (rs.next()) {
             	 
                  JSONObject fixtureJson = new JSONObject();
+                 
                  fixtureJson.put("fixture_id", rs.getInt("fixture_id"));
                  fixtureJson.put("tour_id", rs.getInt("tour_id"));
+                 fixtureJson.put("tour_name", rs.getString("tour_name"));
+                 
                  fixtureJson.put("team1_id", rs.getInt("team1_id"));
+                 fixtureJson.put("team1_name", rs.getString("team1_name"));
+                 fixtureJson.put("team1_captain", rs.getString("team1_captain"));
+                 
                  fixtureJson.put("team2_id", rs.getInt("team2_id"));
-                 fixtureJson.put("winner_id", rs.getInt("winner_id"));
+                 fixtureJson.put("team2_name", rs.getString("team2_name"));
+                 fixtureJson.put("team2_captain", rs.getString("team2_captain"));
+                 
+                 fixtureJson.put("winner_team", rs.getString("winner_team_name") + " "+ rs.getString("result") );
+                 
                  fixtureJson.put("venue_id", rs.getInt("venue_id"));
+                 fixtureJson.put("venue_name", rs.getString("venue_name"));
+                 fixtureJson.put("venue_location", rs.getString("venue_location"));
+                 
                  fixtureJson.put("match_date", rs.getDate("match_date").toString());
+                 
 
                  fixturesArray.put(fixtureJson); 
              }

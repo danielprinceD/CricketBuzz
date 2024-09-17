@@ -30,7 +30,7 @@ public class Players extends HttpServlet {
 
 	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
 	         Statement stmt = conn.createStatement();
-	         ResultSet rs = stmt.executeQuery(sql)) {
+	         ResultSet rs = stmt.executeQuery(sql); ) {
 
 	        while (rs.next()) {
 	            JSONObject playerObject = new JSONObject();

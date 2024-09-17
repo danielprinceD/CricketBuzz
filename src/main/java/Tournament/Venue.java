@@ -1,6 +1,5 @@
 package Tournament;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import javax.servlet.ServletException;
@@ -56,7 +55,6 @@ public class Venue extends HttpServlet {
         }
     }
 
-    // READ
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
        
@@ -108,7 +106,6 @@ public class Venue extends HttpServlet {
         }
     }
 
-    // UPDATE
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("application/json");
@@ -150,7 +147,6 @@ public class Venue extends HttpServlet {
         }
     }
 
-    // DELETE
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("application/json");

@@ -40,7 +40,6 @@ public class Tournaments extends HttpServlet {
                 tournamentObject.put("end_date", rs.getDate("end_date").toString());
                 tournamentObject.put("match_category", rs.getString("match_category"));
                 tournamentObject.put("season", rs.getInt("season"));
-
                 tournamentsArray.put(tournamentObject);
             }
 
