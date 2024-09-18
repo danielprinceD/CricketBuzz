@@ -1,5 +1,6 @@
 package Team;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -7,6 +8,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 
 import javax.servlet.ServletException;
@@ -15,27 +17,80 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jdt.internal.compiler.lookup.ImplicitNullAnnotationVerifier;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
-@WebServlet("/team")
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
+import Model.PlayerModel;
+import Model.TeamModel;
+
+@WebServlet("/teams/*")
 public class Team extends HttpServlet {
 	private static final long serialVersionUID = 1L;
     private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
     private static final String USER = "root";
     private static final String PASS = "";
-
+    
+    public static void addData(PrintWriter out , ResultSet rs , JSONObject jsonObject)
+    {
+    	try {
+    		jsonObject.put("team_id", rs.getInt("team_id"));
+    		jsonObject.put("name", rs.getString("name"));
+    		jsonObject.put("captain_id", rs.getInt("captain_id"));
+    		jsonObject.put("vice_captain_id", rs.getInt("vice_captain_id"));
+    		jsonObject.put("wicket_keeper_id", rs.getInt("wicket_keeper_id"));
+    		jsonObject.put("category", rs.getString("category"));
+    		
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+    }
+    
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
-        response.setContentType("application/json");
-        PrintWriter out = response.getWriter();
-        String teamId = request.getParameter("team_id");
         
-        if (teamId == null || teamId.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.print("{\"error\": \"team_id parameter is required\"}");
-            return;
-        }
+        response.setContentType("application/json");
+		String pathInfoString = request.getPathInfo();		
+		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
+		PrintWriter out = response.getWriter();
+		
+		if( pathArray == null || pathArray.length == 0 )
+		{
+			String sql = "SELECT * FROM team";
+			JSONArray playersArray = new JSONArray();
+			
+			try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+			         Statement stmt = conn.createStatement();
+			         ResultSet rs = stmt.executeQuery(sql); ) {
+
+			        while (rs.next()) {
+			            JSONObject playerObject = new JSONObject();
+			            addData( out , rs , playerObject);
+			            playersArray.put(playerObject);
+			        }
+
+
+			        out.print(playersArray.toString());
+			        out.flush();
+
+			    } catch (SQLException e) {
+			        e.printStackTrace();
+			        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
+			    }
+			
+			return;
+		}
+		
+		  String teamId = pathArray[1];
+	      
+	        if (teamId == null) {
+	            Extra.sendError(response , out , "Team ID is required");
+	            return;
+	        }
 
         String query = "SELECT * FROM team WHERE team_id = ?";
 
@@ -46,24 +101,17 @@ public class Team extends HttpServlet {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("team_id", rs.getInt("team_id"));
-                jsonObject.put("name", rs.getString("name"));
-                jsonObject.put("captain_id", rs.getInt("captain_id"));
-                jsonObject.put("vice_captain_id", rs.getInt("vice_captain_id"));
-                jsonObject.put("wicket_keeper_id", rs.getInt("wicket_keeper_id"));
-                jsonObject.put("category", rs.getString("category"));
+        		JSONObject jsonObject = new JSONObject();
+                addData(out, rs , jsonObject);
                 out.print(jsonObject.toString());
+                return;
             } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.print("{\"error\": \"Team not found\"}");
+            	Extra.sendError(response, out, "No Team ID is found");
             }
         } catch (NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.print("{\"error\": \"Invalid team_id format\"}");
+        	Extra.sendError(response, out, "Invalid Team ID is found");
         } catch (SQLException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.print("{\"error\": \"Error fetching data\"}");
+        	Extra.sendError(response, out, "Error Fetching Data");
             e.printStackTrace();
         }
     }
@@ -72,120 +120,83 @@ public class Team extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
 
-        response.setContentType("text/plain");
-        PrintWriter out = response.getWriter();
-        String captainId = request.getParameter("captain_id");
-        String viceCaptainId = request.getParameter("vice_captain_id");
-        String wicketKeeperId = request.getParameter("wicket_keeper_id");
-        String category = request.getParameter("category");
-        String name = request.getParameter("name");
-
-        if (category == null || category.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("category parameter is required.");
-            return;
-        }
+    	StringBuilder jsonString = new StringBuilder();
+        BufferedReader reader = request.getReader();
+        String line;
         
-        if (captainId != null && viceCaptainId != null && captainId.equals(viceCaptainId)) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().println("captain_id and vice_captain_id cannot have the same value.");
-            return;
-        }
+        while((line = reader.readLine()) != null)
+        		jsonString.append(line);
         
-        String sql = "INSERT INTO team (captain_id, vice_captain_id, wicket_keeper_id, category , name) "
-                   + "VALUES (?, ?, ?, ? , ? )";
-
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setObject(1, captainId != null ? Integer.parseInt(captainId) : null, Types.INTEGER);
-            pstmt.setObject(2, viceCaptainId != null ? Integer.parseInt(viceCaptainId) : null, Types.INTEGER);
-            pstmt.setObject(3, wicketKeeperId != null ? Integer.parseInt(wicketKeeperId) : null, Types.INTEGER);
-            pstmt.setString(4, category);
-            pstmt.setString(5, name);
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
-                out.println("Team added successfully!");
-            } else {
-                out.println("Failed to add team.");
-            }
-        } catch (NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("Invalid ID format.");
-        } catch (SQLException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.println("Database error: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
-
-        response.setContentType("text/plain");
         PrintWriter out = response.getWriter();
-        String teamId = request.getParameter("team_id");
-        String captainId = request.getParameter("captain_id");
-        String viceCaptainId = request.getParameter("vice_captain_id");
-        String wicketKeeperId = request.getParameter("wicket_keeper_id");
-        String category = request.getParameter("category");
-        String name = request.getParameter("name");
-
-        if (teamId == null || teamId.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("team_id parameter is required.");
-            return;
+        TeamModel teamModel = new Gson().fromJson(jsonString.toString(), TeamModel.class);
+        
+        String sql;
+        
+        if(teamModel.getTeamId() < 0 && teamModel.isValid())
+        {
+        	 sql = "INSERT INTO team (captain_id, vice_captain_id, wicket_keeper_id, category , name) "
+                     + "VALUES (?, ?, ?, ? , ? )";
         }
-
-        if (category == null || category.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("category parameter is required.");
-            return;
+        else if(teamModel.isValid())
+        {
+        	sql = "UPDATE team SET captain_id = ?, vice_captain_id = ?, wicket_keeper_id = ?, category = ? , name = ? "
+                    + "WHERE team_id = ?";
         }
-
-        String sql = "UPDATE team SET captain_id = ?, vice_captain_id = ?, wicket_keeper_id = ?, category = ? , name = ? "
-                   + "WHERE team_id = ?";
-
+        else {
+        	Extra.sendError(response, out , "Missing Parameters");
+        	return;
+		}
+        
+        
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setObject(1, captainId != null ? Integer.parseInt(captainId) : null, Types.INTEGER);
-            pstmt.setObject(2, viceCaptainId != null ? Integer.parseInt(viceCaptainId) : null, Types.INTEGER);
-            pstmt.setObject(3, wicketKeeperId != null ? Integer.parseInt(wicketKeeperId) : null, Types.INTEGER);
-            pstmt.setString(4, category);
-            pstmt.setString(5, name);
-            pstmt.setInt(6, Integer.parseInt(teamId));
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
-                out.println("Team updated successfully.");
-            } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.println("No team found with the provided ID.");
-            }
-        } catch (NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("Invalid ID format.");
-        } catch (SQLException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.println("Database error: " + e.getMessage());
-            e.printStackTrace();
-        }
+               pstmt.setInt(1, teamModel.getCaptainId());
+               pstmt.setInt(2, teamModel.getViceCaptainId());
+               pstmt.setInt(3, teamModel.getWicketKeeperId());
+               pstmt.setString(4, teamModel.getCategory());
+               pstmt.setString(5, teamModel.getName());
+               
+               if(teamModel.getTeamId() > 0)
+            	   pstmt.setInt(6 , teamModel.getTeamId());
+               
+               int rowsAffected = pstmt.executeUpdate();
+               if (rowsAffected > 0 && teamModel.getTeamId() > 0) {
+            	   Extra.sendSuccess(response, out, "Player updated successfully");
+               }
+               else if(rowsAffected > 0)
+               {
+            	   Extra.sendSuccess(response, out, "Team inserted successfully");
+               }
+               else {
+                  Extra.sendError(response, out, "No ID Found");
+               }
+           } catch (NumberFormatException e) {
+        	   Extra.sendError(response, out, e.getMessage());
+           } catch (SQLException e) {
+               Extra.sendError(response, out, e.getMessage());
+           }
+    	
     }
-
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
 
-        response.setContentType("text/plain");
-        PrintWriter out = response.getWriter();
-        String teamId = request.getParameter("team_id");
-
-        if (teamId == null || teamId.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("team_id parameter is required.");
+    	
+    	String pathInfoString = request.getPathInfo();		
+		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
+		PrintWriter out = response.getWriter();
+    	
+		if(pathArray == null || pathArray.length <= 0 )
+		{
+			Extra.sendError(response, out, "ID is required");
+			return;
+		}
+    	
+		String teamId = pathArray[1];
+	      
+        if (teamId == null) {
+            Extra.sendError(response , out , "Team ID is required");
             return;
         }
 
@@ -198,17 +209,14 @@ public class Team extends HttpServlet {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
-                out.println("Team deleted successfully.");
+            	Extra.sendSuccess(response, out, "Team Deleted Successfully");
             } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.println("No team found with the provided ID.");
+            	Extra.sendError(response, out, "No Data Found");
             }
         } catch (NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("Invalid team_id format.");
+        	Extra.sendError(response, out, e.getMessage());
         } catch (SQLException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.println("Database error: " + e.getMessage());
+        	Extra.sendError(response, out, e.getMessage());
             e.printStackTrace();
         }
     }

@@ -1,34 +1,96 @@
 package Team;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import javax.security.auth.message.MessageInfo;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.sound.sampled.Line;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.sql.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
 
-@WebServlet("/player")
+import Model.PlayerModel;
+
+import java.sql.*;
+import Team.Extra;
+
+@WebServlet("/players/*")
 public class Player extends HttpServlet {
-	
+
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
 	private static final String USER = "root";
 	private static final String PASS = "";
-
+	
+	protected void addData(JSONObject playerObject , ResultSet rs) {
+		
+		try {
+			
+		playerObject.put("id", rs.getInt("id"));
+        playerObject.put("name", rs.getString("name"));
+        playerObject.put("role", rs.getString("role"));
+        playerObject.put("address", rs.getString("address"));
+        playerObject.put("gender", rs.getString("gender"));
+        playerObject.put("rating", rs.getInt("rating"));
+        playerObject.put("batting_style", rs.getString("batting_style"));
+        playerObject.put("bowling_style", rs.getString("bowling_style"));
+        
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			
+		}
+	}
+	
 	
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		response.setContentType("application/json");
 		
-        PrintWriter out = response.getWriter();
-        String playerId = request.getParameter("player_id");
+		response.setContentType("application/json");
+		String pathInfoString = request.getPathInfo();		
+		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
+		PrintWriter out = response.getWriter();
+		
+		if( pathArray == null || pathArray.length == 0 )
+		{
+			String sql = "SELECT * FROM player";
+			JSONArray playersArray = new JSONArray();
+			
+			try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+			         Statement stmt = conn.createStatement();
+			         ResultSet rs = stmt.executeQuery(sql); ) {
+
+			        while (rs.next()) {
+			            JSONObject playerObject = new JSONObject();
+			            addData(playerObject, rs);
+			            playersArray.put(playerObject);
+			        }
+
+
+			        out.print(playersArray.toString());
+			        out.flush();
+
+			    } catch (SQLException e) {
+			        e.printStackTrace();
+			        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
+			    }
+			
+			return;
+		}
+		
+        String playerId = pathArray[1];
+      
         if (playerId == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.print("{\"error\": \"player_id parameter is required\"}");
+            Extra.sendError(response , out , "Player id is not found");
             return;
         }
 
@@ -42,23 +104,17 @@ public class Player extends HttpServlet {
 
             if (rs.next()) {
             	JSONObject jsonObject = new JSONObject();
-                jsonObject.put("id", rs.getInt("id"));
-                jsonObject.put("name", rs.getString("name"));
-                jsonObject.put("role", rs.getString("role"));
-                jsonObject.put("address", rs.getString("address"));
-                jsonObject.put("gender", rs.getString("gender"));
-                jsonObject.put("rating", rs.getInt("rating"));
-                jsonObject.put("batting_style", rs.getString("batting_style"));
-                jsonObject.put("bowling_style", rs.getString("bowling_style"));
+            	addData(jsonObject, rs);
                 out.print(jsonObject.toString());
+
             } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.print("{\"error\": \"Player not found\"}");
+            Extra.sendError(response, out, "Player Not Found");
             }
         } catch (Exception e) {
             e.printStackTrace();
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.print("{\"error\": \"Error fetching data\"}");
+            
+			Extra.sendError(response, out ,e.getMessage().toString());
+            return;
         }
 	}
 
@@ -66,46 +122,69 @@ public class Player extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
     	
-        String name = request.getParameter("name");
-        String role = request.getParameter("role");
-        String address = request.getParameter("address");
-        String gender = request.getParameter("gender");
-        String ratingStr = request.getParameter("rating");
-        String battingStyle = request.getParameter("batting_style");
-        String bowlingStyle = request.getParameter("bowling_style");
-
-        int rating = 0;
-        if (ratingStr != null && !ratingStr.isEmpty()) {
-            try {
-                rating = Integer.parseInt(ratingStr);
-            } catch (NumberFormatException e) {
-                e.printStackTrace();
-            }
+    	StringBuilder jsonString = new StringBuilder();
+        BufferedReader reader = request.getReader();
+        String line;
+        while((line = reader.readLine()) != null)
+        		jsonString.append(line);
+        
+        PrintWriter out = response.getWriter();
+        PlayerModel playerModel = new Gson().fromJson(jsonString.toString(), PlayerModel.class);
+        
+        String sql;
+        
+        if(playerModel.getId() < 0 && playerModel.isValid())
+        {
+        	sql = "INSERT INTO player (name, role, address, gender, rating, batting_style, bowling_style) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         }
-
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
-            String sql = "INSERT INTO player (name, role, address, gender, rating, batting_style, bowling_style) "
-                       + "VALUES (?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, name);
-                pstmt.setString(2, role);
-                pstmt.setString(3, address);
-                pstmt.setString(4, gender);
-                pstmt.setInt(5, rating);
-                pstmt.setString(6, battingStyle);
-                pstmt.setString(7, bowlingStyle);
-
-                int rowsAffected = pstmt.executeUpdate();
-                if (rowsAffected > 0) {
-                    response.getWriter().println("Player added successfully!");
-                } else {
-                    response.getWriter().println("Failed to add player.");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            response.getWriter().println("Database error: " + e.getMessage());
+        else if(playerModel.isValid())
+        {
+        	sql = "UPDATE player SET name = ?, role = ?, address = ?, gender = ?, rating = ?, "
+                    + "batting_style = ?, bowling_style = ? WHERE id = ?";
         }
+        else {
+        	Extra.sendError(response, out , "Missing Parameters");
+        	return;
+		}
+        
+        
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+               pstmt.setString(1, playerModel.getName());
+               pstmt.setString(2, playerModel.getRole());
+               pstmt.setString(3, playerModel.getAddress());
+               pstmt.setString(4, playerModel.getGender());
+               pstmt.setDouble(5, playerModel.getRating());
+               pstmt.setString(6, playerModel.getBattingStyle());
+               pstmt.setString(7, playerModel.getBowlingStyle());
+               
+               if(playerModel.getId() > 0)
+            	   pstmt.setInt(8 , playerModel.getId());
+
+               int rowsAffected = pstmt.executeUpdate();
+               if (rowsAffected > 0 && playerModel.getId() > 0) {
+            	   Extra.sendSuccess(response, out, "Player Updated successfully");
+               }
+               else if(rowsAffected > 0)
+               {
+            	   Extra.sendSuccess(response, out, "Player inserted successfully");
+               }
+               else {
+                   Extra.sendError(response , out , "No player found with the provided ID.");
+               }
+           } catch (NumberFormatException e) {
+               response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+               out.println("Invalid player_id format.");
+           } catch (SQLException e) {
+               response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+               out.println("Database error: " + e.getMessage());
+               e.printStackTrace();
+           }
+        
+        
+        
     }
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) 
@@ -113,106 +192,39 @@ public class Player extends HttpServlet {
 
         response.setContentType("text/plain");
         PrintWriter out = response.getWriter();
-        String playerId = request.getParameter("player_id");
-
-        if (playerId == null || playerId.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("player_id parameter is required.");
-            return;
-        }
-
-        String sql = "DELETE FROM player WHERE id = ?";
-
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, Integer.parseInt(playerId));
-            int rowsAffected = pstmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                out.println("Player deleted successfully.");
-            } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.println("No player found with the provided ID.");
-            }
-        } catch (NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("Invalid player_id format.");
-        } catch (SQLException e) {
+        
+        String pathInfoString = request.getPathInfo();		
+		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
+		
+		if(pathArray == null || pathArray.length == 0)
+		{
+			Extra.sendError(response, out, "No ID is mentioned");
+			return;
+		}
+		
+		String sql = "DELETE FROM player where id = ?";
+		
+		
+		try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement pstmt = conn.prepareStatement(sql); 
+				) {
+			Integer playerId = Integer.parseInt(pathArray[1]);
+			pstmt.setInt(1, playerId);
+			int affected = pstmt.executeUpdate();
+			
+			if(affected > 0)
+			Extra.sendError(response, out,"Deleted Successfully");
+			else 
+				Extra.sendError(response, out, "No Data Found in that id");
+		}
+		catch (SQLException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.println("Database error: " + e.getMessage());
+            Extra.sendError(response, out, e.getMessage());
             e.printStackTrace();
         }
-    }
-    
-    @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
-
-        response.setContentType("text/plain");
-        PrintWriter out = response.getWriter();
-        String playerId = request.getParameter("player_id");
-        String name = request.getParameter("name");
-        String role = request.getParameter("role");
-        String address = request.getParameter("address");
-        String gender = request.getParameter("gender");
-        String ratingStr = request.getParameter("rating");
-        String battingStyle = request.getParameter("batting_style");
-        String bowlingStyle = request.getParameter("bowling_style");
-
-        if (playerId == null || playerId.trim().isEmpty()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("player_id parameter is required.");
-            return;
-        }
-
-        if (name == null || role == null || address == null || gender == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("Required fields are missing.");
-            return;
-        }
-
-        int rating = 0;
-        if (ratingStr != null && !ratingStr.isEmpty()) {
-            try {
-                rating = Integer.parseInt(ratingStr);
-            } catch (NumberFormatException e) {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                out.println("Invalid rating format.");
-                return;
-            }
-        }
-
-        String sql = "UPDATE player SET name = ?, role = ?, address = ?, gender = ?, rating = ?, "
-                   + "batting_style = ?, bowling_style = ? WHERE id = ?";
-
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, name);
-            pstmt.setString(2, role);
-            pstmt.setString(3, address);
-            pstmt.setString(4, gender);
-            pstmt.setInt(5, rating);
-            pstmt.setString(6, battingStyle);
-            pstmt.setString(7, bowlingStyle);
-            pstmt.setInt(8, Integer.parseInt(playerId));
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
-                out.println("Player updated successfully.");
-            } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.println("No player found with the provided ID.");
-            }
-        } catch (NumberFormatException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            out.println("Invalid player_id format.");
-        } catch (SQLException e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.println("Database error: " + e.getMessage());
-            e.printStackTrace();
-        }
+		catch (Exception e) {
+			Extra.sendError(response, out, e.getMessage());
+		}
     }
 
 }
