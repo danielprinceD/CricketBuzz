@@ -1,7 +1,5 @@
 package Model;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 
 public class TournamentModel {
     private int tourId = -1;
@@ -11,9 +9,11 @@ public class TournamentModel {
     private String matchCategory;
     private int season;
 
-
     public int getTourId() {
         return tourId;
+    }
+    public void setTourId(int tourId) {
+        this.tourId = tourId;
     }
     public String getName() {
         return name;

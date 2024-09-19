@@ -1,7 +1,5 @@
 package Model;
 
-import com.mysql.cj.xdevapi.Schema.Validation;
-
 public class PlayerModel {
     private int id = -1;
     private String name;

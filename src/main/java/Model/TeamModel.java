@@ -1,10 +1,12 @@
 package Model;
 
+import java.util.List;
+
 public class TeamModel {
-	private int teamId = -1;
-    private int captainId = -1;
-    private int viceCaptainId = -1;
-    private int wicketKeeperId = -1;
+	private Integer teamId = -1;
+    private Integer captainId = -1;
+    private Integer viceCaptainId = -1;
+    private Integer wicketKeeperId = -1;
     private String category;
     private String name;
 
@@ -16,7 +18,7 @@ public class TeamModel {
         this.teamId = teamId;
     }
 
-    public int getCaptainId() {
+    public Integer getCaptainId() {
         return captainId;
     }
 
@@ -24,7 +26,7 @@ public class TeamModel {
         this.captainId = captainId;
     }
 
-    public int getViceCaptainId() {
+    public Integer getViceCaptainId() {
         return viceCaptainId;
     }
 
@@ -32,7 +34,7 @@ public class TeamModel {
         this.viceCaptainId = viceCaptainId;
     }
 
-    public int getWicketKeeperId() {
+    public Integer getWicketKeeperId() {
         return wicketKeeperId;
     }
 

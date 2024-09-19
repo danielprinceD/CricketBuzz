@@ -3,27 +3,23 @@ package Team;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
-import javax.security.auth.message.MessageInfo;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.sound.sampled.Line;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.mysql.cj.protocol.a.NativeConstants.StringLengthDataType;
-
 import Model.PlayerModel;
 
 import java.sql.*;
-import Team.Extra;
+import java.util.List;
+
 
 @WebServlet("/players/*")
 public class Player extends HttpServlet {
@@ -119,73 +115,113 @@ public class Player extends HttpServlet {
 	}
 
 
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
-    	
-    	StringBuilder jsonString = new StringBuilder();
-        BufferedReader reader = request.getReader();
-        String line;
-        while((line = reader.readLine()) != null)
-        		jsonString.append(line);
-        
-        PrintWriter out = response.getWriter();
-        PlayerModel playerModel = new Gson().fromJson(jsonString.toString(), PlayerModel.class);
-        
-        String sql;
-        
-        if(playerModel.getId() < 0 && playerModel.isValid())
-        {
-        	sql = "INSERT INTO player (name, role, address, gender, rating, batting_style, bowling_style) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        }
-        else if(playerModel.isValid())
-        {
-        	sql = "UPDATE player SET name = ?, role = ?, address = ?, gender = ?, rating = ?, "
-                    + "batting_style = ?, bowling_style = ? WHERE id = ?";
-        }
-        else {
-        	Extra.sendError(response, out , "Missing Parameters");
-        	return;
-		}
-        
-        
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) 
+	        throws ServletException, IOException {
 
-               pstmt.setString(1, playerModel.getName());
-               pstmt.setString(2, playerModel.getRole());
-               pstmt.setString(3, playerModel.getAddress());
-               pstmt.setString(4, playerModel.getGender());
-               pstmt.setDouble(5, playerModel.getRating());
-               pstmt.setString(6, playerModel.getBattingStyle());
-               pstmt.setString(7, playerModel.getBowlingStyle());
-               
-               if(playerModel.getId() > 0)
-            	   pstmt.setInt(8 , playerModel.getId());
+	    StringBuilder jsonString = new StringBuilder();
+	    BufferedReader reader = request.getReader();
+	    String line;
+	    while ((line = reader.readLine()) != null) {
+	        jsonString.append(line);
+	    }
 
-               int rowsAffected = pstmt.executeUpdate();
-               if (rowsAffected > 0 && playerModel.getId() > 0) {
-            	   Extra.sendSuccess(response, out, "Player Updated successfully");
-               }
-               else if(rowsAffected > 0)
-               {
-            	   Extra.sendSuccess(response, out, "Player inserted successfully");
-               }
-               else {
-                   Extra.sendError(response , out , "No player found with the provided ID.");
-               }
-           } catch (NumberFormatException e) {
-               response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-               out.println("Invalid player_id format.");
-           } catch (SQLException e) {
-               response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-               out.println("Database error: " + e.getMessage());
-               e.printStackTrace();
-           }
-        
-        
-        
-    }
+	    PrintWriter out = response.getWriter();
+
+	    java.lang.reflect.Type listType = new TypeToken<List<PlayerModel>>() {}.getType();
+	    List<PlayerModel> playerModels = new Gson().fromJson(jsonString.toString(), listType);
+
+	    if (playerModels == null || playerModels.isEmpty()) {
+	        Extra.sendError(response, out, "No player data provided.");
+	        return;
+	    }
+
+	    Connection conn = null;
+	    PreparedStatement pstmt = null;
+	    String sql = null;
+
+	    try {
+	        conn = DriverManager.getConnection(DB_URL, USER, PASS);
+	        conn.setAutoCommit(false);
+
+	        for (PlayerModel playerModel : playerModels) {
+	            if (playerModel.isValid()) {
+	                if (playerModel.getId() < 0) {
+	                    // Insert new player
+	                    sql = "INSERT INTO player (name, role, address, gender, rating, batting_style, bowling_style) "
+	                            + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+	                    pstmt = conn.prepareStatement(sql);
+	                    pstmt.setString(1, playerModel.getName());
+	                    pstmt.setString(2, playerModel.getRole());
+	                    pstmt.setString(3, playerModel.getAddress());
+	                    pstmt.setString(4, playerModel.getGender());
+	                    pstmt.setDouble(5, playerModel.getRating());
+	                    pstmt.setString(6, playerModel.getBattingStyle());
+	                    pstmt.setString(7, playerModel.getBowlingStyle());
+	                } else {
+	                    // Update existing player
+	                    sql = "UPDATE player SET name = ?, role = ?, address = ?, gender = ?, rating = ?, "
+	                            + "batting_style = ?, bowling_style = ? WHERE id = ?";
+	                    pstmt = conn.prepareStatement(sql);
+	                    pstmt.setString(1, playerModel.getName());
+	                    pstmt.setString(2, playerModel.getRole());
+	                    pstmt.setString(3, playerModel.getAddress());
+	                    pstmt.setString(4, playerModel.getGender());
+	                    pstmt.setDouble(5, playerModel.getRating());
+	                    pstmt.setString(6, playerModel.getBattingStyle());
+	                    pstmt.setString(7, playerModel.getBowlingStyle());
+	                    pstmt.setInt(8, playerModel.getId());
+	                }
+
+	                int rowsAffected = pstmt.executeUpdate();
+
+	                if (rowsAffected <= 0) {
+	                    Extra.sendError(response, out, "Failed to process player data.");
+	                    conn.rollback();
+	                    return;
+	                }
+	            } else {
+	                Extra.sendError(response, out, "Invalid player data.");
+	                conn.rollback();
+	                return;
+	            }
+	        }
+
+	        conn.commit();
+	        Extra.sendSuccess(response, out, "Players processed successfully.");
+
+	    } catch (NumberFormatException e) {
+	        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+	        out.println("Invalid player_id format.");
+	    } catch (SQLException e) {
+	        if (conn != null) {
+	            try {
+	                conn.rollback();
+	            } catch (SQLException rollbackEx) {
+	                rollbackEx.printStackTrace();
+	            }
+	        }
+	        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+	        out.println("Database error: " + e.getMessage());
+	        e.printStackTrace();
+	    } finally {
+	        if (pstmt != null) {
+	            try {
+	                pstmt.close();
+	            } catch (SQLException e) {
+	                e.printStackTrace();
+	            }
+	        }
+	        if (conn != null) {
+	            try {
+	                conn.close();
+	            } catch (SQLException e) {
+	                e.printStackTrace();
+	            }
+	        }
+	    }
+	}
+
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -225,6 +261,13 @@ public class Player extends HttpServlet {
 		catch (Exception e) {
 			Extra.sendError(response, out, e.getMessage());
 		}
+    }
+    
+    @Override 
+    protected void doPut(HttpServletRequest request , HttpServletResponse response) throws ServletException , IOException
+    {
+    	doPost(request, response);
+    	return;
     }
 
 }
