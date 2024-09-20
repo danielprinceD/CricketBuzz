@@ -26,7 +26,7 @@ import org.json.JSONObject;
 
 import Team.Extra;
 
-@WebServlet("/playing_11s")
+@WebServlet("/playing-11s")
 public class Playing_11 extends HttpServlet {
     private static final long serialVersionUID = 1L;
     
