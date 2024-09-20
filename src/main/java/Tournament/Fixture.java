@@ -41,13 +41,7 @@ public class Fixture extends HttpServlet {
             fixtureJson.put("tour_id", rs.getInt("tour_id"));
             fixtureJson.put("tour_name", rs.getString("tour_name"));
             
-            fixtureJson.put("team1_id", rs.getInt("team1_id"));
-            fixtureJson.put("team1_name", rs.getString("team1_name"));
-            fixtureJson.put("team1_captain", rs.getString("team1_captain"));
             
-            fixtureJson.put("team2_id", rs.getInt("team2_id"));
-            fixtureJson.put("team2_name", rs.getString("team2_name"));
-            fixtureJson.put("team2_captain", rs.getString("team2_captain"));
             
             fixtureJson.put("winner_team", rs.getString("winner_team_name") + " "+ rs.getString("result") );
             
@@ -64,52 +58,130 @@ public class Fixture extends HttpServlet {
     }
     
     
-    private void getOneFixture(HttpServletResponse response , PrintWriter out , String[] pathArray) throws IOException {
-    	
-		String fixtureId = pathArray[1];
-	      
-        if (fixtureId == null ) {
-            Extra.sendError(response , out , "Team ID is required");
+    private void getPlaying11sByFixtureAndTeamID(JSONArray teamArrayObject, Integer fixtureId, Integer teamId, Integer[] teamDetails) {
+      
+        String sql = "SELECT player_id, role, runs, wickets_taken, balls_faced FROM playing_11 WHERE fixture_id = ? AND team_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, fixtureId);
+            pstmt.setInt(2, teamId);
+            
+            ResultSet rs = pstmt.executeQuery();
+
+            teamDetails[0] = 0; 
+            teamDetails[1] = 0; 
+            teamDetails[2] = 0; 
+
+            while (rs.next()) {
+                JSONObject playerJson = new JSONObject();
+                
+                playerJson.put("player_id", rs.getInt("player_id"));
+                playerJson.put("role", rs.getString("role"));
+                playerJson.put("runs", rs.getInt("runs"));
+                playerJson.put("wickets_taken", rs.getInt("wickets_taken"));
+                playerJson.put("balls_faced", rs.getInt("balls_faced"));
+
+                teamArrayObject.put(playerJson);
+
+                teamDetails[0] += rs.getInt("runs");
+                teamDetails[1] += rs.getInt("wickets_taken");
+                teamDetails[2] += rs.getInt("balls_faced");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    
+    
+    private void getOneFixture(HttpServletResponse response, PrintWriter out, String[] pathArray) throws IOException {
+        String fixtureId = pathArray[1];
+
+        if (fixtureId == null) {
+            Extra.sendError(response, out, "Fixture ID is required");
             return;
         }
 
-    String query = "SELECT IFNULL(md.result , '' ) AS result, f.fixture_id, f.tour_id, tour.name AS tour_name, "
-            + "t1.team_id AS team1_id, t1.name AS team1_name, p1.name AS team1_captain, "
-            + "t2.team_id AS team2_id, t2.name AS team2_name, p2.name AS team2_captain, "
-            + "IFNULL(v.venue_id,'NOT SET') AS venue_id, IFNULL(v.stadium , 'NOT SET') AS venue_name, IFNULL(v.location, 'NOT_SET') AS venue_location, "
-            + "IFNULL(winner_team.name, 'No winner') AS winner_team_name, f.match_date "
-            + "FROM fixture f "
-            + "LEFT JOIN match_details md ON f.fixture_id = md.fixture_id "
-            + "JOIN tournament tour ON f.tour_id = tour.tour_id "
-            + "JOIN team t1 ON f.team1_id = t1.team_id "
-            + "JOIN player p1 ON t1.captain_id = p1.id "
-            + "JOIN team t2 ON f.team2_id = t2.team_id "
-            + "JOIN player p2 ON t2.captain_id = p2.id "
-            + "JOIN venue v ON f.venue_id = v.venue_id "
-            + "LEFT JOIN team winner_team ON f.winner_id = winner_team.team_id WHERE f.fixture_id  = ?";
+        String query = "SELECT IFNULL(md.result , '' ) AS result, f.fixture_id, f.tour_id, tour.name AS tour_name, "
+                + "t1.team_id AS team1_id, t1.name AS team1_name, p1.name AS team1_captain, "
+                + "t2.team_id AS team2_id, t2.name AS team2_name, p2.name AS team2_captain, "
+                + "IFNULL(v.venue_id,'NOT SET') AS venue_id, IFNULL(v.stadium , 'NOT SET') AS venue_name, IFNULL(v.location, 'NOT_SET') AS venue_location, "
+                + "IFNULL(winner_team.name, 'No winner') AS winner_team_name, f.match_date "
+                + "FROM fixture f "
+                + "LEFT JOIN match_details md ON f.fixture_id = md.fixture_id "
+                + "JOIN tournament tour ON f.tour_id = tour.tour_id "
+                + "JOIN team t1 ON f.team1_id = t1.team_id "
+                + "JOIN player p1 ON t1.captain_id = p1.id "
+                + "JOIN team t2 ON f.team2_id = t2.team_id "
+                + "JOIN player p2 ON t2.captain_id = p2.id "
+                + "JOIN venue v ON f.venue_id = v.venue_id "
+                + "LEFT JOIN team winner_team ON f.winner_id = winner_team.team_id WHERE f.fixture_id  = ?";
 
-    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-         PreparedStatement stmt = conn.prepareStatement(query)) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
 
-        stmt.setInt(1, Integer.parseInt(fixtureId));
-        ResultSet rs = stmt.executeQuery();
+            stmt.setInt(1, Integer.parseInt(fixtureId));
+            ResultSet rs = stmt.executeQuery();
 
-        if (rs.next()) {
-    		JSONObject jsonObject = new JSONObject();
-            addData(out, rs , jsonObject);
-            out.print(jsonObject.toString());
-            return;
-        } else {
-        	Extra.sendError(response, out, "No Team ID is found*");
+            if (rs.next()) {
+                JSONObject jsonObject = new JSONObject();
+                addData(out, rs, jsonObject);
+                
+                JSONObject team1 = new JSONObject();
+                JSONObject team2 = new JSONObject();
+                
+                
+                team1.put("id", rs.getInt("team1_id"));
+                team1.put("name", rs.getString("team1_name"));
+                team1.put("captain", rs.getString("team1_captain"));
+                
+                team2.put("id", rs.getInt("team2_id"));
+                team2.put("name", rs.getString("team2_name"));
+                team2.put("captain", rs.getString("team2_captain"));
+                
+                
+                
+                Integer[] team1Details = new Integer[3]; 
+                Integer[] team2Details = new Integer[3]; 
+
+                JSONArray team1PlayersArray = new JSONArray();
+                JSONArray team2PlayersArray = new JSONArray();
+
+                getPlaying11sByFixtureAndTeamID(team1PlayersArray, Integer.parseInt(fixtureId), rs.getInt("team1_id"), team1Details);
+                
+                
+                team1.put("players", team1PlayersArray);
+                team1.put("score", team1Details[0]);
+                team1.put("wickets", team1Details[1]);
+                team1.put("balls_faced", team1Details[2]);
+
+                getPlaying11sByFixtureAndTeamID(team2PlayersArray, Integer.parseInt(fixtureId), rs.getInt("team2_id"), team2Details);
+                
+                team2.put("players", team2PlayersArray);
+                team2.put("players", team2PlayersArray);
+                team2.put("score", team2Details[0]);
+                team2.put("wickets", team2Details[1]);
+                team2.put("balls_faced", team2Details[2]);
+
+                jsonObject.put("team1", team1);
+                jsonObject.put("team2", team2);
+                
+                out.print(jsonObject.toString());
+                return;
+            } else {
+                Extra.sendError(response, out, "No Fixture ID found");
+            }
+        } catch (NumberFormatException e) {
+            Extra.sendError(response, out, "Invalid Fixture ID");
+        } catch (SQLException e) {
+            Extra.sendError(response, out, "Error Fetching Data");
+            e.printStackTrace();
         }
-    } catch (NumberFormatException e) {
-    	Extra.sendError(response, out, "Invalid Team ID is found");
-    } catch (SQLException e) {
-    	Extra.sendError(response, out, "Error Fetching Data");
-        e.printStackTrace();
     }
-		
-    }
+
     private void getAllFixture(HttpServletResponse response , PrintWriter out ) throws IOException {
     	
     	String sql = "SELECT IFNULL(md.result , '' ) AS result, f.fixture_id, f.tour_id, tour.name AS tour_name, "
@@ -359,6 +431,9 @@ public class Fixture extends HttpServlet {
 		PrintWriter out = response.getWriter();
 		
 		
+		
+		
+		
 		if(pathArray == null || pathArray.length <= 1)
 		{
 			if(request.getParameter("tour_id") == null)
@@ -368,7 +443,9 @@ public class Fixture extends HttpServlet {
 		}
 		else if(pathArray.length == 2)
 		{
+			
 			getOneFixture(response , out , pathArray);
+			
 			return;
 		}
 		
