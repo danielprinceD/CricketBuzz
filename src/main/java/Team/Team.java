@@ -9,7 +9,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.security.auth.message.callback.PrivateKeyCallback.Request;
@@ -50,6 +52,35 @@ public class Team extends HttpServlet {
 		}
     }
     
+    private JSONArray getPlayersForTeam(Integer teamId) {
+        JSONArray playerArray = new JSONArray();
+        String sqlString = "SELECT TP.player_id, P.name AS PlayerName, P.role AS PlayerRole, P.rating AS PlayerRating "
+                + "FROM team_player AS TP "
+                + "JOIN player AS P ON TP.player_id = P.id "
+                + "WHERE TP.team_id = ?";
+
+        try (Connection personConnection = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement personPreparedStatement = personConnection.prepareStatement(sqlString)) {
+
+            personPreparedStatement.setInt(1, teamId);
+            ResultSet personRS = personPreparedStatement.executeQuery();
+
+            while (personRS.next()) {
+                JSONObject playerObject = new JSONObject();
+                playerObject.put("player_id", personRS.getInt("player_id"));
+                playerObject.put("name", personRS.getString("PlayerName"));
+                playerObject.put("role", personRS.getString("PlayerRole"));
+                playerObject.put("rating", personRS.getInt("PlayerRating"));
+                playerArray.put(playerObject);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        
+        return playerArray;
+    }
+    
+    
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -61,74 +92,73 @@ public class Team extends HttpServlet {
 		
 		if( pathArray == null || pathArray.length == 0 )
 		{
-			String sql = "SELECT * FROM team";
-			
-			JSONArray teamsArray = new JSONArray();
-			
-			try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-			         Statement stmt = conn.createStatement();
-			         ResultSet rs = stmt.executeQuery(sql); ) {
+			response.setContentType("application/json");
+		    StringBuilder sql = new StringBuilder("SELECT * FROM team WHERE 1=1");
+		    List<Object> parameters = new ArrayList<>();
 
-			        while (rs.next()) {
-			            JSONObject teamObject = new JSONObject();
-			            addData( out , rs , teamObject);
-			            
-			            Integer teamId = rs.getInt("team_id");
-			            
-			            Connection personConnection = null;
-			            PreparedStatement personPreparedStatement = null;
-			            
-			            try {
-			                personConnection = DriverManager.getConnection(DB_URL, USER, PASS);
-			                
-			                String sqlString = "SELECT TP.player_id, P.name AS PlayerName, P.role AS PlayerRole, P.rating AS PlayerRating "
-		                             + "FROM team_player AS TP "
-		                             + "JOIN player AS P ON TP.player_id = P.id "
-		                             + "WHERE TP.team_id = ?";
-			                                 
-			                personPreparedStatement = personConnection.prepareStatement(sqlString);
-			                personPreparedStatement.setInt(1, teamId);
-			                
-			                JSONArray playerArray = new JSONArray();
-			                ResultSet personRS = personPreparedStatement.executeQuery();
-			                
-			                while (personRS.next()) {
-			                	
-			                    int playerId = personRS.getInt("player_id");
-			                    String playerName = personRS.getString("PlayerName");
-			                    String playerRole = personRS.getString("PlayerRole");
-			                    int playerRating = personRS.getInt("PlayerRating");
+		    
+		    String wicketKeeperId = request.getParameter("wicket_keeper_id");
+		    String viceCaptainId = request.getParameter("vice_captain_id");
+		    String captainId = request.getParameter("captain_id");
+		    String name = request.getParameter("name");
+		    String teamId = request.getParameter("team_id");
+		    String category = request.getParameter("category");
 
-			                    JSONObject playerObject = new JSONObject();
-			                    playerObject.put("player_id", playerId);
-			                    playerObject.put("name", playerName);
-			                    playerObject.put("role", playerRole);
-			                    playerObject.put("rating", playerRating);
-			                    playerArray.put(playerObject);
-			                }
-			                teamObject.put("team_players", playerArray);
-			                
-			            } catch (SQLException e) {
-			                e.printStackTrace();
-			            } finally {
-			                try {
-			                    if (personPreparedStatement != null) personPreparedStatement.close();
-			                    if (personConnection != null) personConnection.close();
-			                } catch (SQLException e) {
-			                    e.printStackTrace();
-			                }
-			            }
-			            
-			            teamsArray.put(teamObject);
-			        }
-			        out.print(teamsArray.toString());
-			        out.flush();
+		    if (wicketKeeperId != null) {
+		        sql.append(" AND wicket_keeper_id = ?");
+		        parameters.add(Integer.parseInt(wicketKeeperId));
+		    }
+		    if (viceCaptainId != null) {
+		        sql.append(" AND vice_captain_id = ?");
+		        parameters.add(Integer.parseInt(viceCaptainId));
+		    }
+		    if (captainId != null) {
+		        sql.append(" AND captain_id = ?");
+		        parameters.add(Integer.parseInt(captainId));
+		    }
+		    if (name != null) {
+		        sql.append(" AND name = ?");
+		        parameters.add(name);
+		    }
+		    if (teamId != null) {
+		        sql.append(" AND team_id = ?");
+		        parameters.add(Integer.parseInt(teamId));
+		    }
+		    if (category != null) {
+		        sql.append(" AND category = ?");
+		        parameters.add(category);
+		    }
 
-			    } catch (SQLException e) {
-			        e.printStackTrace();
-			        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
-			    }
-			
+		    JSONArray teamsArray = new JSONArray();
+
+		    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+		         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+
+		        for (int i = 0; i < parameters.size(); i++) {
+		            pstmt.setObject(i + 1, parameters.get(i));
+		        }
+
+		        ResultSet rs = pstmt.executeQuery();
+
+		        while (rs.next()) {
+		            JSONObject teamObject = new JSONObject();
+		            addData(out, rs, teamObject);
+
+		            Integer teamIdValue = rs.getInt("team_id");
+
+		            JSONArray playerArray = getPlayersForTeam(teamIdValue);
+		            teamObject.put("team_players", playerArray);
+
+		            teamsArray.put(teamObject);
+		        }
+
+		        out.print(teamsArray.toString());
+		        out.flush();
+
+		    } catch (SQLException e) {
+		        e.printStackTrace();
+		        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
+		    }
 			return;
 		}
 		

@@ -278,6 +278,7 @@ public class Fixture extends HttpServlet {
                 pstmt.setInt(1, fixtureModel.getTeam1Id());
                 pstmt.setInt(2, fixtureModel.getTeam2Id());
                 pstmt.setInt(3, fixtureModel.getVenueId());
+               
                 
                 if (fixtureModel.getWinnerId() > 0) {
                     pstmt.setInt(4, fixtureModel.getWinnerId());

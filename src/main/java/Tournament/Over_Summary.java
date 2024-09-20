@@ -1,11 +1,14 @@
 package Tournament;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -14,6 +17,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 @WebServlet("/over_summary")
@@ -24,79 +28,101 @@ public class Over_Summary extends HttpServlet {
     private static final String USER = "root";
     private static final String PASS = "";
 	
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-	        throws ServletException, IOException {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
 
-	    String fixtureIdParam = request.getParameter("fixture_id");
-	    String overCountParam = request.getParameter("over_count");
-	    String runParam = request.getParameter("run");
-	    String wktParam = request.getParameter("wkt");
+        StringBuilder jsonBuffer = new StringBuilder();
+        String line;
+        try (BufferedReader reader = request.getReader()) {
+            while ((line = reader.readLine()) != null) {
+                jsonBuffer.append(line);
+            }
+        }
 
-	    if (fixtureIdParam == null || overCountParam == null || runParam == null || wktParam == null) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing parameters.");
-	        return;
-	    }
+        JSONArray jsonArray;
+        try {
+            jsonArray = new JSONArray(jsonBuffer.toString());
+        } catch (JSONException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON format.");
+            return;
+        }
 
-	    int fixtureId, overCount, run, wkt;
-	    try {
-	        fixtureId = Integer.parseInt(fixtureIdParam);
-	        overCount = Integer.parseInt(overCountParam);
-	        run = Integer.parseInt(runParam);
-	        wkt = Integer.parseInt(wktParam);
-	    } catch (NumberFormatException e) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid parameter format.");
-	        return;
-	    }
+        String sql = "INSERT INTO over_summary (fixture_id, over_count, run, wkt) VALUES (?, ?, ?, ?)";
 
-	    String sql = "INSERT INTO over_summary (fixture_id, over_count, run, wkt) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            int insertedRecords = 0;
+            Integer fixtureId = Integer.parseInt( request.getParameter("fixture_id") );
 
-	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
 
-	        pstmt.setInt(1, fixtureId);
-	        pstmt.setInt(2, overCount);
-	        pstmt.setInt(3, run);
-	        pstmt.setInt(4, wkt);
-	        pstmt.executeUpdate();
+                int overCount = jsonObject.getInt("over_count");
+                int run = jsonObject.getInt("run");
+                int wkt = jsonObject.getInt("wkt");
 
-	        response.setStatus(HttpServletResponse.SC_CREATED);
-	        response.getWriter().write("Record created successfully.");
+                pstmt.setInt(1, fixtureId);
+                pstmt.setInt(2, overCount);
+                pstmt.setInt(3, run);
+                pstmt.setInt(4, wkt);
+                insertedRecords += pstmt.executeUpdate();
+            }
 
-	    } catch (SQLException e) {
-	        e.printStackTrace();
-	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error.");
-	    }
-	}
+            if (insertedRecords > 0) {
+                response.setStatus(HttpServletResponse.SC_CREATED);
+                response.getWriter().write(insertedRecords + " record(s) created successfully.");
+            } else {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No records inserted.");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error.");
+        } catch (JSONException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON format.");
+        }
+    }
+
 	
 	
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 	        throws ServletException, IOException {
 
+	    StringBuilder sql = new StringBuilder("SELECT * FROM over_summary WHERE 1=1");
+	    List<Object> parameters = new ArrayList<>();
+
 	    String fixtureIdParam = request.getParameter("fixture_id");
+	    String overCountParam = request.getParameter("over_count");
+	    String runParam = request.getParameter("run");
+	    String wktParam = request.getParameter("wkt");
 
-	    if (fixtureIdParam == null) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing fixture_id parameter.");
-	        return;
+	    if (fixtureIdParam != null) {
+	        sql.append(" AND fixture_id = ?");
+	        parameters.add(Integer.parseInt(fixtureIdParam));
 	    }
-
-	    int fixtureId;
-	    try {
-	        fixtureId = Integer.parseInt(fixtureIdParam);
-	    } catch (NumberFormatException e) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid fixture_id format.");
-	        return;
+	    if (overCountParam != null) {
+	        sql.append(" AND over_count = ?");
+	        parameters.add(Integer.parseInt(overCountParam));
 	    }
-
-	    String sql = "SELECT * FROM over_summary WHERE fixture_id = ?";
+	    if (runParam != null) {
+	        sql.append(" AND run = ?");
+	        parameters.add(Integer.parseInt(runParam));
+	    }
+	    if (wktParam != null) {
+	        sql.append(" AND wkt = ?");
+	        parameters.add(Integer.parseInt(wktParam));
+	    }
 
 	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
-	        pstmt.setInt(1, fixtureId);
+	        for (int i = 0; i < parameters.size(); i++) {
+	            pstmt.setObject(i + 1, parameters.get(i));
+	        }
+
 	        ResultSet rs = pstmt.executeQuery();
-
 	        JSONArray jsonArray = new JSONArray();
 
 	        while (rs.next()) {
@@ -118,104 +144,117 @@ public class Over_Summary extends HttpServlet {
 	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error.");
 	    }
 	}
-	
+
 	
 	
 	@Override
 	protected void doPut(HttpServletRequest request, HttpServletResponse response)
 	        throws ServletException, IOException {
 
-	    String fixtureIdParam = request.getParameter("fixture_id");
-	    String overCountParam = request.getParameter("over_count");
-	    String runParam = request.getParameter("run");
-	    String wktParam = request.getParameter("wkt");
-
-	    if (fixtureIdParam == null || overCountParam == null || runParam == null || wktParam == null) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing parameters.");
-	        return;
+	    StringBuilder jsonBuffer = new StringBuilder();
+	    String line;
+	    try (BufferedReader reader = request.getReader()) {
+	        while ((line = reader.readLine()) != null) {
+	            jsonBuffer.append(line);
+	        }
 	    }
 
-	    int fixtureId, overCount, run, wkt;
+	    JSONArray jsonArray;
 	    try {
-	        fixtureId = Integer.parseInt(fixtureIdParam);
-	        overCount = Integer.parseInt(overCountParam);
-	        run = Integer.parseInt(runParam);
-	        wkt = Integer.parseInt(wktParam);
-	    } catch (NumberFormatException e) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid parameter format.");
+	        jsonArray = new JSONArray(jsonBuffer.toString());
+	    } catch (JSONException e) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON format.");
 	        return;
 	    }
 
 	    String sql = "UPDATE over_summary SET run = ?, wkt = ? WHERE fixture_id = ? AND over_count = ?";
-
+	    Integer fixtureId = Integer.parseInt(request.getParameter("fixture_id"));
+	    
 	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
 	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-	        pstmt.setInt(1, run);
-	        pstmt.setInt(2, wkt);
-	        pstmt.setInt(3, fixtureId);
-	        pstmt.setInt(4, overCount);
+	        int updatedRecords = 0;
 
-	        int affectedRows = pstmt.executeUpdate();
+	        for (int i = 0; i < jsonArray.length(); i++) {
+	            JSONObject jsonObject = jsonArray.getJSONObject(i);
+	           
+	            int overCount = jsonObject.getInt("over_count");
+	            int run = jsonObject.getInt("run");
+	            int wkt = jsonObject.getInt("wkt");
 
-	        if (affectedRows > 0) {
+	            pstmt.setInt(1, run);
+	            pstmt.setInt(2, wkt);
+	            pstmt.setInt(3, fixtureId);
+	            pstmt.setInt(4, overCount);
+
+	            updatedRecords += pstmt.executeUpdate();
+	        }
+
+	        if (updatedRecords > 0) {
 	            response.setStatus(HttpServletResponse.SC_OK);
-	            response.getWriter().write("Record updated successfully.");
+	            response.getWriter().write(updatedRecords + " record(s) updated successfully.");
 	        } else {
-	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "Record not found.");
+	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "No records found to update.");
 	        }
 
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error.");
-	    }	    
-	    
+	    } catch (JSONException e) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON format.");
+	    }
 	}
+
 
 
 	@Override
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response)
 	        throws ServletException, IOException {
 
+	    StringBuilder sql = new StringBuilder("DELETE FROM over_summary WHERE 1=1");
+	    List<Object> parameters = new ArrayList<>();
+
 	    String fixtureIdParam = request.getParameter("fixture_id");
-	    String overParmString = request.getParameter("over_count");
+	    String overCountParam = request.getParameter("over_count");
 
-	    if (fixtureIdParam == null || overParmString == null) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing parameter.");
-	        return;
+	    if (fixtureIdParam != null) {
+	        sql.append(" AND fixture_id = ?");
+	        parameters.add(Integer.parseInt(fixtureIdParam));
+	    }
+	    if (overCountParam != null) {
+	        sql.append(" AND over_count = ?");
+	        parameters.add(Integer.parseInt(overCountParam));
 	    }
 
-	    int fixtureId , overId;
-	    try {
-	        fixtureId = Integer.parseInt(fixtureIdParam);
-	        overId = Integer.parseInt(overParmString);
-	        
-	    } catch (NumberFormatException e) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid format.");
+	    if (parameters.isEmpty()) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No parameters provided for deletion.");
 	        return;
 	    }
-
-	    String sql = "DELETE FROM over_summary WHERE fixture_id = ? AND over_count = ?";
 
 	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-	         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
-	        pstmt.setInt(1, fixtureId);
-	        pstmt.setInt(2, overId);
+	        for (int i = 0; i < parameters.size(); i++) {
+	            pstmt.setObject(i + 1, parameters.get(i));
+	        }
+
 	        int affectedRows = pstmt.executeUpdate();
 
 	        if (affectedRows > 0) {
 	            response.setStatus(HttpServletResponse.SC_OK);
-	            response.getWriter().write("Record deleted successfully.");
+	            response.getWriter().write("Record(s) deleted successfully.");
 	        } else {
-	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "Record not found.");
+	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "No records found to delete.");
 	        }
 
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error.");
+	    } catch (NumberFormatException e) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid parameter format.");
 	    }
 	}
+
 
 
 

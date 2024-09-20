@@ -9,7 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.servlet.ServletException;
@@ -62,49 +64,84 @@ public class Tournament extends HttpServlet {
 		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
 		PrintWriter out = response.getWriter();
 		if (pathArray == null || pathArray.length == 0) {
-	        String sql = "SELECT * FROM tournament";
-	        JSONArray tournamentArray = new JSONArray();
+	       
+			StringBuilder sql = new StringBuilder("SELECT * FROM tournament WHERE 1=1"); 
+			List<Object> parameters = new ArrayList<>();
 
-	        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-	             Statement stmt = conn.createStatement();
-	             ResultSet rs = stmt.executeQuery(sql)) {
+			String name = request.getParameter("name");
+			String startDate = request.getParameter("start_date");
+			String endDate = request.getParameter("end_date");
+			String matchCategory = request.getParameter("match_category");
+			String season = request.getParameter("season");
 
-	            while (rs.next()) {
-	                JSONObject tournamentObject = new JSONObject();
-	                addData(out , rs , tournamentObject);
+			if (name != null) {
+			    sql.append(" AND name LIKE ?");
+			    parameters.add("%" + name + "%");
+			}
+			if (startDate != null) {
+			    sql.append(" AND start_date >= ?");
+			    parameters.add(startDate);
+			}
+			if (endDate != null) {
+			    sql.append(" AND end_date <= ?");
+			    parameters.add(endDate);
+			}
+			if (matchCategory != null) {
+			    sql.append(" AND match_category = ?");
+			    parameters.add(matchCategory);
+			}
+			if (season != null) {
+			    sql.append(" AND season = ?");
+			    parameters.add(Integer.parseInt(season));
+			}
 
-	                String subQuery = "SELECT T.team_id , T.name, T.captain_id, T.vice_captain_id " +
-	                                  "FROM tournament_team AS TT " +
-	                                  "JOIN team AS T ON T.team_id = TT.team_id " +
-	                                  "WHERE TT.tour_id = ?";
-	                
-	                try (PreparedStatement subStmt = conn.prepareStatement(subQuery)) {
-	                    subStmt.setInt(1, rs.getInt("tour_id"));
-	                    ResultSet subRs = subStmt.executeQuery();
+			JSONArray tournamentArray = new JSONArray();
 
-	                    JSONArray teamsArray = new JSONArray();
-	                    while (subRs.next()) {
-	                        JSONObject teamObject = new JSONObject();
-	                        teamObject.put("team_id" , subRs.getInt("team_id"));
-	                        teamObject.put("name", subRs.getString("name"));
-	                        teamObject.put("captain_id", subRs.getInt("captain_id"));
-	                        teamObject.put("vice_captain_id", subRs.getInt("vice_captain_id"));
-	                        teamsArray.put(teamObject);
-	                    }
-	                    tournamentObject.put("particated_teams", teamsArray);
-	                }
+			try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+			     PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
 
-	                tournamentArray.put(tournamentObject);
-	            }
+			    for (int i = 0; i < parameters.size(); i++) {
+			        stmt.setObject(i + 1, parameters.get(i));
+			    }
 
-	            response.setContentType("application/json");
-	            response.getWriter().print(tournamentArray.toString());
-	            response.getWriter().flush();
+			    ResultSet rs = stmt.executeQuery();
 
-	        } catch (SQLException e) {
-	            e.printStackTrace();
-	            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
-	        }
+			    while (rs.next()) {
+			        JSONObject tournamentObject = new JSONObject();
+			        addData(out, rs, tournamentObject);
+
+			        String subQuery = "SELECT T.team_id, T.name, T.captain_id, T.vice_captain_id " +
+			                          "FROM tournament_team AS TT " +
+			                          "JOIN team AS T ON T.team_id = TT.team_id " +
+			                          "WHERE TT.tour_id = ?";
+			        
+			        try (PreparedStatement subStmt = conn.prepareStatement(subQuery)) {
+			            subStmt.setInt(1, rs.getInt("tour_id"));
+			            ResultSet subRs = subStmt.executeQuery();
+
+			            JSONArray teamsArray = new JSONArray();
+			            while (subRs.next()) {
+			                JSONObject teamObject = new JSONObject();
+			                teamObject.put("team_id", subRs.getInt("team_id"));
+			                teamObject.put("name", subRs.getString("name"));
+			                teamObject.put("captain_id", subRs.getInt("captain_id"));
+			                teamObject.put("vice_captain_id", subRs.getInt("vice_captain_id"));
+			                teamsArray.put(teamObject);
+			            }
+			            tournamentObject.put("participated_teams", teamsArray);
+			        }
+
+			        tournamentArray.put(tournamentObject);
+			    }
+
+			    response.setContentType("application/json");
+			    response.getWriter().print(tournamentArray.toString());
+			    response.getWriter().flush();
+
+			} catch (SQLException e) {
+			    e.printStackTrace();
+			    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
+			}
 
 	        return;
 	    }

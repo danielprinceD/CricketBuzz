@@ -18,6 +18,7 @@ import org.json.JSONObject;
 import Model.PlayerModel;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -52,25 +53,73 @@ public class Player extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		
 		response.setContentType("application/json");
-		String pathInfoString = request.getPathInfo();		
-		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
+		String pathInfoString = request.getPathInfo();
+		String[] pathArray = pathInfoString != null ? pathInfoString.split("/") : null;
 		PrintWriter out = response.getWriter();
-		
-		if( pathArray == null || pathArray.length == 0 )
-		{
-			String sql = "SELECT * FROM player";
-			JSONArray playersArray = new JSONArray();
-			
-			try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-			         Statement stmt = conn.createStatement();
-			         ResultSet rs = stmt.executeQuery(sql); ) {
+
+		if (pathArray == null || pathArray.length == 0) {
+		    
+			    StringBuilder sql = new StringBuilder("SELECT * FROM player WHERE 1=1"); 
+			    List<String> filters = new ArrayList<>();
+
+			    String role = request.getParameter("role");
+			    String address = request.getParameter("address");
+			    String gender = request.getParameter("gender");
+			    String bowlingStyle = request.getParameter("bowling_style");
+			    String name = request.getParameter("name");
+			    String rating = request.getParameter("rating");
+			    String battingStyle = request.getParameter("batting_style");
+
+			    if (role != null) {
+			        sql.append(" AND role = ?");
+			        filters.add(role);
+			    }
+			    if (address != null) {
+			        sql.append(" AND address = ?");
+			        filters.add(address);
+			    }
+			    if (gender != null) {
+			        sql.append(" AND gender = ?");
+			        filters.add(gender);
+			    }
+			    if (bowlingStyle != null) {
+			        sql.append(" AND bowling_style = ?");
+			        filters.add(bowlingStyle);
+			    }
+			    if (name != null) {
+			        sql.append(" AND name = ?");
+			        filters.add(name);
+			    }
+			    if (rating != null) {
+			        sql.append(" AND rating = ?");
+			        filters.add(rating);
+			    }
+			    if (battingStyle != null) {
+			        sql.append(" AND batting_style = ?");
+			        filters.add(battingStyle);
+			    }
+
+			    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+			         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+
+			        for (int i = 0; i < filters.size(); i++) {
+			            pstmt.setString(i + 1, filters.get(i));
+			        }
+
+			        ResultSet rs = pstmt.executeQuery();
+			        JSONArray playersArray = new JSONArray();
 
 			        while (rs.next()) {
 			            JSONObject playerObject = new JSONObject();
-			            addData(playerObject, rs);
+			            playerObject.put("role", rs.getString("role"));
+			            playerObject.put("address", rs.getString("address"));
+			            playerObject.put("gender", rs.getString("gender"));
+			            playerObject.put("bowling_style", rs.getString("bowling_style"));
+			            playerObject.put("name", rs.getString("name"));
+			            playerObject.put("rating", rs.getInt("rating"));
+			            playerObject.put("batting_style", rs.getString("batting_style"));
 			            playersArray.put(playerObject);
 			        }
-
 
 			        out.print(playersArray.toString());
 			        out.flush();
@@ -79,10 +128,9 @@ public class Player extends HttpServlet {
 			        e.printStackTrace();
 			        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
 			    }
-			
-			return;
+		    return;
 		}
-		
+
         String playerId = pathArray[1];
       
         if (playerId == null) {
