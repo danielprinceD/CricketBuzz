@@ -1,16 +1,16 @@
 package Model;
 
 public class CommentaryModel {
-    private int commentary_id;
-    private int fixture_id;
-    private int over_count;
-    private int ball;
+    private Integer commentary_id;
+    private Integer fixture_id;
+//    private Integer over_count;
+//    private Integer ball;
     private String run_type;
     private String commentaryText;
-    private int batter_id;
-    private int bowler_id;
+    private Integer batter_id;
+    private Integer bowler_id;
     private String date_time;
-    private int catcher_id;
+    private Integer catcher_id;
 
 
     public int getCommentaryId() {
@@ -29,21 +29,21 @@ public class CommentaryModel {
         this.fixture_id = fixtureId;
     }
 
-    public int getOverCount() {
-        return over_count;
-    }
-
-    public void setOverCount(int overCount) {
-        this.over_count = overCount;
-    }
-
-    public int getBall() {
-        return ball;
-    }
-
-    public void setBall(int ball) {
-        this.ball = ball;
-    }
+//    public int getOverCount() {
+//        return over_count;
+//    }
+//
+//    public void setOverCount(int overCount) {
+//        this.over_count = overCount;
+//    }
+//
+//    public int getBall() {
+//        return ball;
+//    }
+//
+//    public void setBall(int ball) {
+//        this.ball = ball;
+//    }
 
     public String getRunType() {
         return run_type;
@@ -94,7 +94,7 @@ public class CommentaryModel {
     }
 
     public boolean isValid() {
-        return fixture_id > 0 && over_count > 0 && ball > 0;
+        return fixture_id > 0 ;
     }
 }
 

@@ -1,15 +1,28 @@
 package Model;
 
+import java.util.List;
+
+import org.json.JSONObject;
+
+
+
 public class PlayerModel {
+	
+	
+	
     private int id = -1;
     private String name;
     private String role;
-    private String address;
+    private AddressModel address;
     private String gender;
     private double rating;
     private String battingStyle;
     private String bowlingStyle;
 
+    public AddressModel getAddress(){
+		return address;
+	}
+    
     public int getId() {
         return id;
     }
@@ -34,14 +47,7 @@ public class PlayerModel {
         this.role = role;
     }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
+ 
     public String getGender() {
         return gender;
     }

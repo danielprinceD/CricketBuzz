@@ -1,5 +1,7 @@
 package Model;
 
+import java.util.List;
+
 
 public class TournamentModel {
     private int tourId = -1;
@@ -7,8 +9,14 @@ public class TournamentModel {
     private String startDate; 
     private String endDate;  
     private String matchCategory;
+    public List<TourTeam> tour_team;
+    private String status;
     private int season;
 
+    public String getStatus() {
+    	return status;
+    }
+    	
     public int getTourId() {
         return tourId;
     }

@@ -9,7 +9,25 @@ public class FixtureModel {
     private int winnerId = -1;
     private int venueId = -1;
     private String matchDate;
+    private String round;
+    private String status;
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    
+    
+    public String getRound() {
+        return round;
+    }
+
+    public void setRound(String round) {
+        this.round = round;
+    }
 
     public int getFixtureId() {
         return fixtureId;
@@ -68,7 +86,7 @@ public class FixtureModel {
     }
     
     public boolean isValid() {
-        if (team1Id <= 0 || team2Id <= 0 || venueId <= 0 ) {
+        if (team1Id <= 0 || team2Id <= 0 || venueId <= 0 || matchDate == null) {
             return false; 
         }
         

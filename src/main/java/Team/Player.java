@@ -7,7 +7,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -22,9 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-@WebServlet("/players/*")
 public class Player extends HttpServlet {
-
+	
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
 	private static final String USER = "root";
 	private static final String PASS = "";
@@ -47,120 +45,152 @@ public class Player extends HttpServlet {
 			e.printStackTrace();
 			
 		}
+		
 	}
 	
-	
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException , IOException {
 		
 		response.setContentType("application/json");
+		
 		String pathInfoString = request.getPathInfo();
 		String[] pathArray = pathInfoString != null ? pathInfoString.split("/") : null;
 		PrintWriter out = response.getWriter();
 
-		if (pathArray == null || pathArray.length == 0) {
 		    
-			    StringBuilder sql = new StringBuilder("SELECT * FROM player WHERE 1=1"); 
-			    List<String> filters = new ArrayList<>();
+	    StringBuilder sql = new StringBuilder("SELECT P.id , P.role , P.gender , P.bowling_style , P.name , P.rating , P.batting_style , A.address_id , A.street , A.city , A.state , A.door_num , A.nationality  FROM player as P JOIN address AS A ON P.address_id = A.address_id"); 
+	   
+	    List<Object> filters = new ArrayList<>();
 
-			    String role = request.getParameter("role");
-			    String address = request.getParameter("address");
-			    String gender = request.getParameter("gender");
-			    String bowlingStyle = request.getParameter("bowling_style");
-			    String name = request.getParameter("name");
-			    String rating = request.getParameter("rating");
-			    String battingStyle = request.getParameter("batting_style");
+	    String role = request.getParameter("role");
+	    String gender = request.getParameter("gender");
+	    String bowlingStyle = request.getParameter("bowling_style");
+	    String name = request.getParameter("name");
+	    String rating = request.getParameter("rating");
+	    String battingStyle = request.getParameter("batting_style");
+	    
+	    
+	    boolean whereAdded = false;
 
-			    if (role != null) {
-			        sql.append(" AND role = ?");
-			        filters.add(role);
-			    }
-			    if (address != null) {
-			        sql.append(" AND address = ?");
-			        filters.add(address);
-			    }
-			    if (gender != null) {
-			        sql.append(" AND gender = ?");
-			        filters.add(gender);
-			    }
-			    if (bowlingStyle != null) {
-			        sql.append(" AND bowling_style = ?");
-			        filters.add(bowlingStyle);
-			    }
-			    if (name != null) {
-			        sql.append(" AND name = ?");
-			        filters.add(name);
-			    }
-			    if (rating != null) {
-			        sql.append(" AND rating = ?");
-			        filters.add(rating);
-			    }
-			    if (battingStyle != null) {
-			        sql.append(" AND batting_style = ?");
-			        filters.add(battingStyle);
-			    }
+	    if (pathArray != null && pathArray.length >= 2) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE id = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND id = ?");
+	        }
+	        filters.add(Integer.parseInt(pathArray[1]));
+	    }
 
-			    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-			         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+	    if (role != null) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE role = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND role = ?");
+	        }
+	        filters.add(role);
+	    }
 
-			        for (int i = 0; i < filters.size(); i++) {
-			            pstmt.setString(i + 1, filters.get(i));
-			        }
+	    
 
-			        ResultSet rs = pstmt.executeQuery();
-			        JSONArray playersArray = new JSONArray();
+	    if (gender != null) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE gender = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND gender = ?");
+	        }
+	        filters.add(gender);
+	    }
 
-			        while (rs.next()) {
-			            JSONObject playerObject = new JSONObject();
-			            playerObject.put("role", rs.getString("role"));
-			            playerObject.put("address", rs.getString("address"));
-			            playerObject.put("gender", rs.getString("gender"));
-			            playerObject.put("bowling_style", rs.getString("bowling_style"));
-			            playerObject.put("name", rs.getString("name"));
-			            playerObject.put("rating", rs.getInt("rating"));
-			            playerObject.put("batting_style", rs.getString("batting_style"));
-			            playersArray.put(playerObject);
-			        }
+	    if (bowlingStyle != null) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE bowling_style = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND bowling_style = ?");
+	        }
+	        filters.add(bowlingStyle);
+	    }
 
-			        out.print(playersArray.toString());
-			        out.flush();
+	    if (name != null) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE name = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND name = ?");
+	        }
+	        filters.add(name);
+	    }
 
-			    } catch (SQLException e) {
-			        e.printStackTrace();
-			        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
-			    }
-		    return;
+	    if (rating != null) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE rating = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND rating = ?");
+	        }
+	        filters.add(rating);
+	    }
+
+	    if (battingStyle != null) {
+	        if (!whereAdded) {
+	            sql.append(" WHERE batting_style = ?");
+	            whereAdded = true;
+	        } else {
+	            sql.append(" AND batting_style = ?");
+	        }
+	        filters.add(battingStyle);
+	    }
+	    
+	    
+
+	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+	         PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+
+	        for (int i = 0; i < filters.size(); i++) {
+	            pstmt.setObject(i + 1, filters.get(i));
+	        }
+
+	        ResultSet rs = pstmt.executeQuery();
+	        JSONArray playersArray = new JSONArray();
+
+	        while (rs.next()) {
+	            JSONObject playerObject = new JSONObject();
+	            playerObject.put("id", rs.getInt("id"));
+	            playerObject.put("role", rs.getString("role"));
+	            
+	            JSONObject addressObject = new JSONObject();
+	            
+	            addressObject.put("address_id", rs.getString("address_id"));
+	            addressObject.put("door_num", rs.getString("door_num"));
+	            addressObject.put("city", rs.getString("city"));
+	            addressObject.put("state", rs.getString("state"));
+	            addressObject.put("nationality", rs.getString("nationality"));
+	            addressObject.put("street", rs.getString("street"));
+	            addressObject.put("address_id", rs.getInt("address_id"));
+	            
+	            playerObject.put("address", addressObject);
+	            
+	            playerObject.put("gender", rs.getString("gender"));
+	            playerObject.put("bowling_style", rs.getString("bowling_style"));
+	            playerObject.put("name", rs.getString("name"));
+	            playerObject.put("rating", rs.getInt("rating"));
+	            playerObject.put("batting_style", rs.getString("batting_style"));
+	            playersArray.put(playerObject);
+	        }
+
+	        	out.print(playersArray.toString());
+	        
+	        out.flush();
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
+	    	}
 		}
-
-        String playerId = pathArray[1];
-      
-        if (playerId == null) {
-            Extra.sendError(response , out , "Player id is not found");
-            return;
-        }
-
-        String query = "SELECT * FROM player WHERE id = ?";
-
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setInt(1, Integer.parseInt(playerId));
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-            	JSONObject jsonObject = new JSONObject();
-            	addData(jsonObject, rs);
-                out.print(jsonObject.toString());
-
-            } else {
-            Extra.sendError(response, out, "Player Not Found");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            
-			Extra.sendError(response, out ,e.getMessage().toString());
-            return;
-        }
-	}
+	
 
 
 	@Override
@@ -177,47 +207,86 @@ public class Player extends HttpServlet {
 	    PrintWriter out = response.getWriter();
 
 	    java.lang.reflect.Type listType = new TypeToken<List<PlayerModel>>() {}.getType();
+	    
 	    List<PlayerModel> playerModels = new Gson().fromJson(jsonString.toString(), listType);
 
 	    if (playerModels == null || playerModels.isEmpty()) {
 	        Extra.sendError(response, out, "No player data provided.");
 	        return;
 	    }
+	    
+	    
 
 	    Connection conn = null;
 	    PreparedStatement pstmt = null;
 	    String sql = null;
-
+	    Boolean isPut = request.getMethod().equalsIgnoreCase("put");
 	    try {
 	        conn = DriverManager.getConnection(DB_URL, USER, PASS);
 	        conn.setAutoCommit(false);
 
 	        for (PlayerModel playerModel : playerModels) {
+	            
 	            if (playerModel.isValid()) {
-	                if (playerModel.getId() < 0) {
-	                    // Insert new player
-	                    sql = "INSERT INTO player (name, role, address, gender, rating, batting_style, bowling_style) "
-	                            + "VALUES (?, ?, ?, ?, ?, ?, ?)";
-	                    pstmt = conn.prepareStatement(sql);
-	                    pstmt.setString(1, playerModel.getName());
-	                    pstmt.setString(2, playerModel.getRole());
-	                    pstmt.setString(3, playerModel.getAddress());
-	                    pstmt.setString(4, playerModel.getGender());
-	                    pstmt.setDouble(5, playerModel.getRating());
-	                    pstmt.setString(6, playerModel.getBattingStyle());
-	                    pstmt.setString(7, playerModel.getBowlingStyle());
+
+	                
+	                if (!isPut) {
+	                    sql = "INSERT INTO player (name, role, address_id, gender, rating, batting_style, bowling_style) VALUES (?, ?, ?, ?, ?, ?, ?)";
 	                } else {
-	                    // Update existing player
-	                    sql = "UPDATE player SET name = ?, role = ?, address = ?, gender = ?, rating = ?, "
-	                            + "batting_style = ?, bowling_style = ? WHERE id = ?";
-	                    pstmt = conn.prepareStatement(sql);
-	                    pstmt.setString(1, playerModel.getName());
-	                    pstmt.setString(2, playerModel.getRole());
-	                    pstmt.setString(3, playerModel.getAddress());
-	                    pstmt.setString(4, playerModel.getGender());
-	                    pstmt.setDouble(5, playerModel.getRating());
-	                    pstmt.setString(6, playerModel.getBattingStyle());
-	                    pstmt.setString(7, playerModel.getBowlingStyle());
+	                    sql = "UPDATE player SET name = ?, role = ?, address_id = ?, gender = ?, rating = ?, batting_style = ?, bowling_style = ? WHERE id = ?";
+	                }
+
+	                pstmt = conn.prepareStatement(sql);
+	                pstmt.setString(1, playerModel.getName());
+	                pstmt.setString(2, playerModel.getRole());
+
+	                String insertAddress;
+	                if (isPut) {
+	                    insertAddress = "UPDATE address SET door_num = ?, street = ?, city = ?, state = ?, nationality = ? WHERE address_id = ?";
+	                } else {
+	                    insertAddress = "INSERT INTO address (door_num, street, city, state, nationality) VALUES (?, ?, ?, ?, ?)";
+	                }
+
+	                try (PreparedStatement addressPstmt = conn.prepareStatement(insertAddress, Statement.RETURN_GENERATED_KEYS)) {
+	                    
+	                    addressPstmt.setString(1, playerModel.getAddress().door_num);
+	                    addressPstmt.setString(2, playerModel.getAddress().street);
+	                    addressPstmt.setString(3, playerModel.getAddress().city);
+	                    addressPstmt.setString(4, playerModel.getAddress().state);
+	                    addressPstmt.setString(5, playerModel.getAddress().nationality);
+
+	                    if (isPut) {
+	                        addressPstmt.setInt(6, playerModel.getAddress().address_id);
+	                    }
+
+	                    int addressRowsAffected = addressPstmt.executeUpdate();
+
+	                    if (addressRowsAffected > 0 && !isPut) {
+	                        try (ResultSet generatedKeys = addressPstmt.getGeneratedKeys()) {
+	                            if (generatedKeys.next()) {
+	                                int addressId = generatedKeys.getInt(1);
+	                                System.out.println(addressId);
+	                                pstmt.setInt(3, addressId); 
+	                            }
+	                        }
+	                    } 
+	                }
+
+	                if(isPut) {
+	                	
+	                	pstmt.setInt(3, playerModel.getAddress().address_id);
+	                }
+	              
+	                pstmt.setString(4, playerModel.getGender());
+	                pstmt.setDouble(5, playerModel.getRating());
+	                pstmt.setString(6, playerModel.getBattingStyle());
+	                pstmt.setString(7, playerModel.getBowlingStyle());
+	                
+	                
+	              
+	                if (isPut) {
+
+                    	System.out.println(playerModel.getId());
 	                    pstmt.setInt(8, playerModel.getId());
 	                }
 
@@ -228,6 +297,7 @@ public class Player extends HttpServlet {
 	                    conn.rollback();
 	                    return;
 	                }
+
 	            } else {
 	                Extra.sendError(response, out, "Invalid player data.");
 	                conn.rollback();
@@ -252,22 +322,7 @@ public class Player extends HttpServlet {
 	        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 	        out.println("Database error: " + e.getMessage());
 	        e.printStackTrace();
-	    } finally {
-	        if (pstmt != null) {
-	            try {
-	                pstmt.close();
-	            } catch (SQLException e) {
-	                e.printStackTrace();
-	            }
-	        }
-	        if (conn != null) {
-	            try {
-	                conn.close();
-	            } catch (SQLException e) {
-	                e.printStackTrace();
-	            }
-	        }
-	    }
+	    } 
 	}
 
     @Override
@@ -286,6 +341,9 @@ public class Player extends HttpServlet {
 			return;
 		}
 		
+		String addressSql = "SELECT address_id FROM player WHERE id = ? ";
+		
+		
 		String sql = "DELETE FROM player where id = ?";
 		
 		
@@ -297,7 +355,7 @@ public class Player extends HttpServlet {
 			int affected = pstmt.executeUpdate();
 			
 			if(affected > 0)
-			Extra.sendError(response, out,"Deleted Successfully");
+			Extra.sendSuccess(response, out,"Deleted Successfully");
 			else 
 				Extra.sendError(response, out, "No Data Found in that id");
 		}
@@ -315,7 +373,6 @@ public class Player extends HttpServlet {
     protected void doPut(HttpServletRequest request , HttpServletResponse response) throws ServletException , IOException
     {
     	doPost(request, response);
-    	return;
     }
 
 }

@@ -9,6 +9,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -17,97 +20,125 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import Model.VenueModel;
 
-@WebServlet("/venues/*")
 public class Venue extends HttpServlet {
 	private static final long serialVersionUID = 1L;
     private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
     private static final String USER = "root";
     private static final String PASS = "";
     
-    public static void addData(PrintWriter out , ResultSet rs , JSONObject jsonObject)
-    {
-    	try {
-
-    		jsonObject.put("venue_id", rs.getInt("venue_id"));
-            jsonObject.put("stadium", rs.getString("stadium"));
-            jsonObject.put("location", rs.getString("location"));
-            jsonObject.put("pitch_condition", rs.getString("pitch_condition"));
-            jsonObject.put("description", rs.getString("description"));
-            jsonObject.put("capacity", rs.getLong("capacity"));
-            jsonObject.put("curator", rs.getString("curator"));
-    		
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-    }
     
-    @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
-        response.setContentType("application/json");
-        
-		String pathInfoString = request.getPathInfo();		
-		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
-		PrintWriter out = response.getWriter();
-		
-		if( pathArray == null || pathArray.length == 0 )
-		{
-			String sql = "SELECT * FROM venue";
-			JSONArray venueArray = new JSONArray();
-			
-			try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-			         Statement stmt = conn.createStatement();
-			         ResultSet rs = stmt.executeQuery(sql); ) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM venue");
+        List<Object> parameters = new ArrayList<>();
+        boolean hasWhereClause = false;
 
-			        while (rs.next()) {
-			            JSONObject venueObject = new JSONObject();
-			            addData( out , rs , venueObject);
-			            venueArray.put(venueObject);
-			        }
+        String venueId = request.getParameter("venue_id");
+        String stadium = request.getParameter("stadium");
+        String location = request.getParameter("location");
+        String pitchCondition = request.getParameter("pitch_condition");
+        String capacity = request.getParameter("capacity");
+        String pathString = request.getPathInfo();
+        if(pathString != null)
+        {
+        	String[] pathArray = pathString.split("/");
+        	if(pathArray.length == 2)
+        	{
+        		if (!hasWhereClause) {
+                    sql.append(" WHERE");
+                    hasWhereClause = true;
+                } else {
+                    sql.append(" AND");
+                }
+                sql.append(" venue_id = ?");
+                parameters.add(pathArray[1]);
+        	}
+        	else {
+        		Extra.sendError(response, response.getWriter() , "Enter a valid Path ");
+        		return;
+        	}
+        }
 
+        if (stadium != null && !stadium.isEmpty()) {
+            if (!hasWhereClause) {
+                sql.append(" WHERE");
+                hasWhereClause = true;
+            } else {
+                sql.append(" AND");
+            }
+            sql.append(" stadium LIKE ?");
+            parameters.add("%" + stadium + "%");
+        }
 
-			        out.print(venueArray.toString());
-			        out.flush();
+        if (location != null && !location.isEmpty()) {
+            if (!hasWhereClause) {
+                sql.append(" WHERE");
+                hasWhereClause = true;
+            } else {
+                sql.append(" AND");
+            }
+            sql.append(" location LIKE ?");
+            parameters.add("%" + location + "%");
+        }
 
-			    } catch (SQLException e) {
-			        e.printStackTrace();
-			        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
-			    }
-			
-			return;
-		}
-		
-		  String teamId = pathArray[1];
-	      
-	        if (teamId == null) {
-	            Extra.sendError(response , out , "Team ID is required");
-	            return;
-	        }
+        if (pitchCondition != null && !pitchCondition.isEmpty()) {
+            if (!hasWhereClause) {
+                sql.append(" WHERE");
+                hasWhereClause = true;
+            } else {
+                sql.append(" AND");
+            }
+            sql.append(" pitch_condition LIKE ?");
+            parameters.add("%" + pitchCondition + "%");
+        }
 
-        String query = "SELECT * FROM venue WHERE venue_id = ?";
+        if (capacity != null && !capacity.isEmpty()) {
+            if (!hasWhereClause) {
+                sql.append(" WHERE");
+                hasWhereClause = true;
+            } else {
+                sql.append(" AND");
+            }
+            sql.append(" capacity = ?");
+            parameters.add(Long.parseLong(capacity));
+        }
+
+        JSONArray venueArray = new JSONArray();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
-            stmt.setInt(1, Integer.parseInt(teamId));
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-        		JSONObject jsonObject = new JSONObject();
-                addData(out, rs , jsonObject);
-                out.print(jsonObject.toString());
-                return;
-            } else {
-            	Extra.sendError(response, out, "No Venue ID is found");
+            for (int i = 0; i < parameters.size(); i++) {
+                pstmt.setObject(i + 1, parameters.get(i));
             }
-        } catch (NumberFormatException e) {
-        	Extra.sendError(response, out, "Invalid Venue ID is found");
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    JSONObject venueObject = new JSONObject();
+                    venueObject.put("venue_id", rs.getInt("venue_id"));
+                    venueObject.put("stadium", rs.getString("stadium"));
+                    venueObject.put("location", rs.getString("location"));
+                    venueObject.put("pitch_condition", rs.getString("pitch_condition"));
+                    venueObject.put("description", rs.getString("description"));
+                    venueObject.put("capacity", rs.getLong("capacity"));
+                    venueObject.put("curator", rs.getString("curator"));
+                    
+                    venueArray.put(venueObject);
+                }
+            }
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(venueArray.toString());
+
         } catch (SQLException e) {
-        	Extra.sendError(response, out, "Error Fetching Data");
             e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
         }
     }
 
@@ -115,82 +146,100 @@ public class Venue extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
 
-    	StringBuilder jsonString = new StringBuilder();
+        StringBuilder jsonString = new StringBuilder();
         BufferedReader reader = request.getReader();
         String line;
         
-        while((line = reader.readLine()) != null)
-        		jsonString.append(line);
+        while ((line = reader.readLine()) != null) {
+            jsonString.append(line);
+        }
         
         PrintWriter out = response.getWriter();
-        VenueModel venueModel = new Gson().fromJson(jsonString.toString(), VenueModel.class);
-        
-        String pathInfoString = request.getPathInfo();		
-		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
-		
-		if(pathArray == null || pathArray.length <= 0)
-		{
-			venueModel.setVenueId(-1);
-		}
-		else { 
-			try{
-				Integer idInteger = Integer.parseInt(pathArray[1]);
-				venueModel.setVenueId(idInteger);
-			}
-			catch (Exception e) {
-				Extra.sendError(response , out , "Enter Valid ID");
-				e.printStackTrace();
-				return;
-				
-			}
-		}
-        
-        String sql;
-        
-        if(venueModel.getVenueId() < 0 && venueModel.isValid())
-        {
-        	sql = "INSERT INTO venue (stadium, location, pitch_condition, description, capacity, curator) VALUES (?, ?, ?, ?, ?, ?)";;
-        }
-        else if(venueModel.isValid())
-        {
-        	sql = "UPDATE venue SET stadium = ?, location = ?, pitch_condition = ?, description = ?, capacity = ?, curator = ? WHERE venue_id = ?";
-        }
-        else {
-        	Extra.sendError(response, out , "Missing Parameters");
-        	return;
-		}
-        
-        
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        TypeToken<List<VenueModel>> typeToken = new TypeToken<List<VenueModel>>() {}; 
+        List<VenueModel> venueModelList = new Gson().fromJson(jsonString.toString(), typeToken.getType());
 
-               pstmt.setString(1, venueModel.getStadium());
-               pstmt.setString(2, venueModel.getLocation());
-               pstmt.setString(3, venueModel.getPitchCondition());
-               pstmt.setString(4, venueModel.getDescription());
-               pstmt.setLong(5, venueModel.getCapacity());
-               pstmt.setString(6, venueModel.getCurator());
-               if(venueModel.getVenueId() > 0)
-            	   pstmt.setInt(7 , venueModel.getVenueId());
-               
-               int rowsAffected = pstmt.executeUpdate();
-               if (rowsAffected > 0 && venueModel.getVenueId() > 0) {
-            	   Extra.sendSuccess(response, out, "Venue updated successfully");
-               }
-               else if(rowsAffected > 0)
-               {
-            	   Extra.sendSuccess(response, out, "Venue inserted successfully");
-               }
-               else {
-                  Extra.sendError(response, out, "No ID Found");
-               }
-           } catch (NumberFormatException e) {
-        	   Extra.sendError(response, out, e.getMessage());
-           } catch (SQLException e) {
-               Extra.sendError(response, out, e.getMessage());
-           }
-    	
+        String pathInfoString = request.getPathInfo();		
+        String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
+
+        JSONArray responseArray = new JSONArray();
+        Connection conn = null;
+
+        try {
+        	
+            conn = DriverManager.getConnection(DB_URL, USER, PASS);
+            conn.setAutoCommit(false); 
+            int rowsAffected=0;
+            for (VenueModel venueModel : venueModelList) {
+                           
+                String sql;
+                
+                if (venueModel.getVenueId() < 0 && venueModel.isValid()) {
+                    sql = "INSERT INTO venue (stadium, location, pitch_condition, description, capacity, curator) VALUES (?, ?, ?, ?, ?, ?)";
+                } else if (venueModel.isValid() && request.getMethod().equalsIgnoreCase("PUT")) {
+                    sql = "UPDATE venue SET stadium = ?, location = ?, pitch_condition = ?, description = ?, capacity = ?, curator = ? WHERE venue_id = ?";
+                } else {
+                    JSONObject errorObj = new JSONObject();
+                    errorObj.put("error", "Missing Parameters");
+                    responseArray.put(errorObj);
+                    throw new SQLException("Invalid data for Venue");
+                }
+                
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                    pstmt.setString(1, venueModel.getStadium());
+                    pstmt.setString(2, venueModel.getLocation());
+                    pstmt.setString(3, venueModel.getPitchCondition());
+                    pstmt.setString(4, venueModel.getDescription());
+                    pstmt.setLong(5, venueModel.getCapacity());
+                    pstmt.setString(6, venueModel.getCurator());
+                    
+                    if (venueModel.getVenueId() > 0)
+                        pstmt.setInt(7, venueModel.getVenueId());
+
+                    rowsAffected = pstmt.executeUpdate();
+                    JSONObject resultObj = new JSONObject();
+
+
+
+                    responseArray.put(resultObj);
+
+                } catch (NumberFormatException e) {
+                    JSONObject errorObj = new JSONObject();
+                    errorObj.put("error", e.getMessage());
+                    responseArray.put(errorObj);
+                    throw new SQLException(e); 
+                }
+            }
+            if (rowsAffected > 0 ) {
+            	Extra.sendSuccess(response, out, "Data has been inserted / updated successfully");
+            	conn.commit();
+            	return;
+            }
+            else 
+            {
+            	Extra.sendError(response, out, "Not updated/inserted");
+            	return;
+            }
+           
+
+            
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback(); 
+                    JSONObject errorObj = new JSONObject();
+                    errorObj.put("error", "Transaction failed, rolled back: " + e.getMessage());
+                    responseArray.put(errorObj);
+                } catch (SQLException rollbackEx) {
+                    JSONObject errorObj = new JSONObject();
+                    errorObj.put("error", "Failed to rollback transaction: " + rollbackEx.getMessage());
+                    responseArray.put(errorObj);
+                }
+            }
+        }
     }
+
+
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -233,5 +282,11 @@ public class Venue extends HttpServlet {
             e.printStackTrace();
         }
     }
+    
+    @Override
+    protected void doPut(HttpServletRequest request , HttpServletResponse response) throws ServletException , IOException {
+    	doPost(request, response);
+	}
+
 }
 

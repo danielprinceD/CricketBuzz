@@ -1,9 +1,7 @@
 package Team;
 
 import java.io.PrintWriter;
-
 import javax.servlet.http.HttpServletResponse;
-
 import com.google.gson.JsonObject;
 
 public class Extra {

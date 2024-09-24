@@ -1,5 +1,6 @@
 package Tournament;
 import java.io.BufferedReader;
+import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -8,29 +9,24 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.jasper.tagplugins.jstl.core.Out;
-import org.eclipse.jdt.internal.compiler.lookup.ImplicitNullAnnotationVerifier;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.databind.jsontype.impl.AsExistingPropertyTypeSerializer;
+import com.fasterxml.jackson.databind.ext.Java7Handlers;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
-import Model.PlayerModel;
 import Model.TeamModel;
+import Model.TourTeam;
 import Model.TournamentModel;
 import Team.Extra;
 
@@ -49,6 +45,7 @@ public class Tournament extends HttpServlet {
             jsonObject.put("end_date", rs.getDate("end_date"));
             jsonObject.put("match_category", rs.getString("match_category"));
             jsonObject.put("season", rs.getInt("season"));
+            jsonObject.put("status", rs.getString("status"));
     		
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -63,37 +60,92 @@ public class Tournament extends HttpServlet {
 		String pathInfoString = request.getPathInfo();		
 		String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
 		PrintWriter out = response.getWriter();
-		if (pathArray == null || pathArray.length == 0) {
-	       
-			StringBuilder sql = new StringBuilder("SELECT * FROM tournament WHERE 1=1"); 
-			List<Object> parameters = new ArrayList<>();
+       
+		StringBuilder sql = new StringBuilder("SELECT * FROM tournament");
+		List<Object> parameters = new ArrayList<>();
 
-			String name = request.getParameter("name");
-			String startDate = request.getParameter("start_date");
-			String endDate = request.getParameter("end_date");
-			String matchCategory = request.getParameter("match_category");
-			String season = request.getParameter("season");
+		boolean firstCondition = true;
 
-			if (name != null) {
-			    sql.append(" AND name LIKE ?");
-			    parameters.add("%" + name + "%");
-			}
-			if (startDate != null) {
-			    sql.append(" AND start_date >= ?");
-			    parameters.add(startDate);
-			}
-			if (endDate != null) {
-			    sql.append(" AND end_date <= ?");
-			    parameters.add(endDate);
-			}
-			if (matchCategory != null) {
-			    sql.append(" AND match_category = ?");
-			    parameters.add(matchCategory);
-			}
-			if (season != null) {
-			    sql.append(" AND season = ?");
-			    parameters.add(Integer.parseInt(season));
-			}
+		String name = request.getParameter("name");
+		String startDate = request.getParameter("start_date");
+		String endDate = request.getParameter("end_date");
+		String matchCategory = request.getParameter("match_category");
+		String season = request.getParameter("season");
+		String status = request.getParameter("status");
+		
+		if(pathArray != null && pathArray.length == 2)
+		{
+			if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" tour_id = ?");
+		    parameters.add(pathArray[1]);
+		}
+		
+		if (status != null && !status.trim().isEmpty()) {
+		    if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" status LIKE ?");
+		    parameters.add("%" + status + "%");
+		}
+		
+		if (name != null && !name.trim().isEmpty()) {
+		    if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" name LIKE ?");
+		    parameters.add("%" + name + "%");
+		}
+		if (startDate != null && !startDate.trim().isEmpty()) {
+		    if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" start_date >= ?");
+		    parameters.add(startDate);
+		}
+		if (endDate != null && !endDate.trim().isEmpty()) {
+		    if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" end_date <= ?");
+		    parameters.add(endDate);
+		}
+		if (matchCategory != null && !matchCategory.trim().isEmpty()) {
+		    if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" match_category = ?");
+		    parameters.add(matchCategory);
+		}
+		if (season != null && !season.trim().isEmpty()) {
+		    if (firstCondition) {
+		        sql.append(" WHERE");
+		        firstCondition = false;
+		    } else {
+		        sql.append(" AND");
+		    }
+		    sql.append(" season = ?");
+		    parameters.add(Integer.parseInt(season));
+		}
 
 			JSONArray tournamentArray = new JSONArray();
 
@@ -108,9 +160,10 @@ public class Tournament extends HttpServlet {
 
 			    while (rs.next()) {
 			        JSONObject tournamentObject = new JSONObject();
+			        
 			        addData(out, rs, tournamentObject);
 
-			        String subQuery = "SELECT T.team_id, T.name, T.captain_id, T.vice_captain_id " +
+			        String subQuery = "SELECT T.team_id , TT.net_run_rate , TT.points " +
 			                          "FROM tournament_team AS TT " +
 			                          "JOIN team AS T ON T.team_id = TT.team_id " +
 			                          "WHERE TT.tour_id = ?";
@@ -120,14 +173,18 @@ public class Tournament extends HttpServlet {
 			            ResultSet subRs = subStmt.executeQuery();
 
 			            JSONArray teamsArray = new JSONArray();
-			            while (subRs.next()) {
-			                JSONObject teamObject = new JSONObject();
-			                teamObject.put("team_id", subRs.getInt("team_id"));
-			                teamObject.put("name", subRs.getString("name"));
-			                teamObject.put("captain_id", subRs.getInt("captain_id"));
-			                teamObject.put("vice_captain_id", subRs.getInt("vice_captain_id"));
-			                teamsArray.put(teamObject);
+			            
+			            while (subRs.next())
+			            {
+			            	JSONObject teamObject = new JSONObject();
+			            	teamObject.put("team_id", subRs.getInt("team_id"));
+			            	teamObject.put("points", subRs.getInt("points"));
+			            	teamObject.put("net_run_rate", subRs.getDouble("net_run_rate"));
+			            	
+			            	
+			            	teamsArray.put(teamObject);
 			            }
+			            
 			            tournamentObject.put("participated_teams", teamsArray);
 			        }
 
@@ -143,225 +200,213 @@ public class Tournament extends HttpServlet {
 			    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
 			}
 
-	        return;
+    }
+    
+    private String prepareSqlStatement(HttpServletRequest request, TournamentModel tournamentModel, HttpServletResponse response, PrintWriter out) {
+
+        if (tournamentModel.getTourId() < 0 && tournamentModel.isValid()) {
+            return "INSERT INTO tournament (name, start_date, end_date, match_category, season , status) VALUES (?, ?, ?, ?, ? , ? )";
+        } else if (tournamentModel.isValid() && request.getMethod().equalsIgnoreCase("PUT")) {
+            return "UPDATE tournament SET name = ?, start_date = ?, end_date = ?, match_category = ?, season = ? , status = ? WHERE tour_id = ?";
+        } else {
+            Extra.sendError(response, out, "Invalid data or missing parameters.");
+            return null;
+        }
+    }
+    
+    private boolean validateTourTeam(TournamentModel teamModel, Set<Integer> teamSet, HttpServletResponse response, PrintWriter out) {
+        
+    	for (TourTeam team : teamModel.tour_team ) {
+            if (teamSet.contains(team.getTeamId())) {
+                Extra.sendError(response, out, "Team cannot be added more than once");
+                return false;
+            }
+            teamSet.add(team.getTeamId());
+        }
+
+        return true;
+    }
+    
+    private void setPreparedStatementValues(PreparedStatement pstmt, TournamentModel tourModel) throws SQLException {
+        pstmt.setString(1, tourModel.getName());
+        pstmt.setString(2, tourModel.getStartDate());
+        pstmt.setString(3, tourModel.getEndDate());
+        pstmt.setString(4, tourModel.getMatchCategory());
+        pstmt.setInt(5, tourModel.getSeason());
+        pstmt.setString(6 , tourModel.getStatus());
+        if (tourModel.getTourId() > 0) {
+            pstmt.setInt(7, tourModel.getTourId());
+        }
+    }
+    
+    
+    private int getGeneratedTourId(PreparedStatement pstmt) throws SQLException {
+        try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+            if (generatedKeys.next()) {
+                return generatedKeys.getInt(1);
+            }
+        }
+        return -1;
+    }
+    
+    
+	private void addTeamsToTour(Connection conn, Set<Integer> teamSet, int tourId , TournamentModel tourModel) throws SQLException {
+	    	
+			String selectQuery = "SELECT team_id FROM tournament_team WHERE tour_id = ?";
+		    Set<Integer> existingTeamIds = new HashSet<>();
+	
+		    try (PreparedStatement selectPstmt = conn.prepareStatement(selectQuery)) {
+		        selectPstmt.setInt(1, tourId);
+		        ResultSet resultSet = selectPstmt.executeQuery();
+	
+		        while (resultSet.next()) {
+		            existingTeamIds.add(resultSet.getInt("team_id"));
+		        }
+		    }
+	
+		    Set<Integer> teamsToRemove = new HashSet<>(existingTeamIds);
+		    teamsToRemove.removeAll(teamSet);
+		    	
+		    if (!teamsToRemove.isEmpty()) {
+		        String deleteQuery = "DELETE FROM tournament_team WHERE tour_id = ? AND team_id = ?";
+		        try (PreparedStatement deletePstmt = conn.prepareStatement(deleteQuery)) {
+		            for (Integer teamId : teamsToRemove) {
+		                deletePstmt.setInt(1, tourId);
+		                deletePstmt.setInt(2, teamId);
+		                deletePstmt.executeUpdate();
+		            }
+		        }
+		    }
+		    
+		    String insertOrUpdateQuery = "INSERT INTO tournament_team (tour_id, team_id, points, net_run_rate) VALUES (?, ?, ?, ?) " +
+			                    "ON DUPLICATE KEY UPDATE points = VALUES(points), net_run_rate = VALUES(net_run_rate)";
+			
+			try (PreparedStatement pstmt = conn.prepareStatement(insertOrUpdateQuery)) {
+			
+				for (TourTeam tourTeam : tourModel.tour_team) {
+				
+					if (!isValidTeam(tourTeam.getTeamId())) {
+					  throw new SQLException("Team ID " + tourTeam.getTeamId() + " is not a team "+ tourId + "."  );
+					}
+					
+					pstmt.setInt(1, tourId);
+					pstmt.setInt(2, tourTeam.getTeamId());     
+					
+					
+					
+					pstmt.setObject(3, tourTeam.getPoints() , java.sql.Types.INTEGER);
+					pstmt.setObject(4, tourTeam.getNetRunRate() , java.sql.Types.DECIMAL);
+					
+					pstmt.executeUpdate();
+				}
+			}
 	    }
-		
-		String tourId = pathArray[1];
+	
+	
+	public boolean isValidTeam(int teamId) {
+	    
+		String query = "SELECT COUNT(*) FROM team WHERE team_id = ?";
+	    boolean exists = false;
 
-	    try {
-	        Integer.parseInt(tourId); 
-	    } catch (NumberFormatException e) {
-	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid Tournament ID format");
-	        return;
-	    }
-
-		
-		String query = "SELECT * FROM tournament WHERE tour_id = ?";
-
-		
 	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-	         PreparedStatement stmt = conn.prepareStatement(query)) {
+	         PreparedStatement pstmt = conn.prepareStatement(query)) {
+	        
+	        pstmt.setInt(1, teamId);
 
-	        stmt.setInt(1, Integer.parseInt(tourId));
-	        ResultSet rs = stmt.executeQuery();
-
-	        if (rs.next()) {
-	            JSONObject jsonObject = new JSONObject();
-	            addData(out , rs , jsonObject);
-
-	            String teamQuery = "SELECT T.team_id, T.name, T.captain_id, T.vice_captain_id " +
-	                               "FROM tournament_team AS TT " +
-	                               "JOIN team AS T ON T.team_id = TT.team_id " +
-	                               "WHERE TT.tour_id = ?";
-
-	            try (PreparedStatement teamStmt = conn.prepareStatement(teamQuery)) {
-	                teamStmt.setInt(1, Integer.parseInt(tourId));
-	                ResultSet teamRs = teamStmt.executeQuery();
-
-	                JSONArray teamsArray = new JSONArray();
-	                while (teamRs.next()) {
-	                    JSONObject teamObject = new JSONObject();
-	                    teamObject.put("team_id" , teamRs.getInt("team_id"));
-	                    teamObject.put("name", teamRs.getString("name"));
-	                    teamObject.put("captain_id", teamRs.getInt("captain_id"));
-	                    teamObject.put("vice_captain_id", teamRs.getInt("vice_captain_id"));
-	                    teamsArray.put(teamObject);
-	                }
-	                jsonObject.put("particated_teams", teamsArray);
-	            }
-
-	            response.setContentType("application/json");
-	            response.getWriter().print(jsonObject.toString());
-	        } else {
-	            response.sendError(HttpServletResponse.SC_NOT_FOUND, "No Tournament found with ID: " + tourId);
+	        ResultSet resultSet = pstmt.executeQuery();
+	        if (resultSet.next()) {
+	            exists = resultSet.getInt(1) > 0; 
 	        }
-
 	    } catch (SQLException e) {
-	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
 	        e.printStackTrace();
 	    }
-    }
+	    
+	    return exists; 
+	}
 
+	
+    
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
-
+        
         StringBuilder jsonString = new StringBuilder();
         BufferedReader reader = request.getReader();
         String line;
-
         while ((line = reader.readLine()) != null) {
             jsonString.append(line);
         }
         
-        
+        TypeToken<List<TournamentModel>> token = new TypeToken<List<TournamentModel>>() {};
+        List<TournamentModel> tourModelList = new Gson().fromJson(jsonString.toString(), token.getType());
+
         PrintWriter out = response.getWriter();
-        TournamentModel tourModel = new Gson().fromJson(jsonString.toString(), TournamentModel.class);
-        String pathInfo = request.getPathInfo();
-        String[] pathArray = pathInfo != null ? pathInfo.split("/") : null;
-        if (tourModel.isValid()) {
-        	if(pathArray != null && pathArray.length >= 2)
+
+
+        for (TournamentModel tourModel : tourModelList) {
+            
+        	if(request.getMethod().equalsIgnoreCase("PUT"))
         	{
-        		Connection conn;
-				try {
-					conn = DriverManager.getConnection(DB_URL , USER  ,PASS);
-					addTourTeam( request.getParameter("teamList") , conn , Integer.parseInt(pathArray[1]));
-					out.print("TeamList Added Successfully");
-				} catch (SQLException e) {
-					
-					e.printStackTrace();
-					Extra.sendError(response, out, e.getMessage());
-				}
+        		if(tourModel.getTourId() < 0)
+        		{
+        			Extra.sendError(response, out, "TourId is required to update");
+        			return;
+        		}
         	}
-        	else 
-            insertTournament(request ,  response, out, tourModel);
-        } else {
-            Extra.sendError(response, out, "Invalid tournament data");
-        }
+        	
+        	Set<Integer> teamSet = new HashSet<>();
+            
+            if (!validateTourTeam(tourModel, teamSet , response, out)) {
+                return;
+            }
+            
+            String sql = prepareSqlStatement(request, tourModel, response, out);
+            if (sql == null) {
+                return;
+            }
+
+            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                 PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                
+                conn.setAutoCommit(false); 
+                
+                setPreparedStatementValues(pstmt, tourModel);
+
+                int rowsAffected = pstmt.executeUpdate();
+                int tourId = tourModel.getTourId(); 
+              
+                if (tourId < 0 && request.getMethod().equalsIgnoreCase("POST")) {
+                    tourId = getGeneratedTourId(pstmt);
+                }
+                
+                
+
+                if (tourId > 0) {
+                    addTeamsToTour(conn, teamSet, tourId , tourModel);
+                }
+
+                if (rowsAffected > 0) {
+                    conn.commit();
+                    Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
+                } else {
+                    conn.rollback();
+                    Extra.sendError(response, out, "Failed to insert/update team");
+                }
+
+            } catch (SQLException e) {
+                Extra.sendError(response, out, e.getMessage());
+                e.printStackTrace();
+            }
+        }   
     }
+
 
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        StringBuilder jsonString = new StringBuilder();
-        BufferedReader reader = request.getReader();
-        String line;
-
-        while ((line = reader.readLine()) != null) {
-            jsonString.append(line);
-        }
-
-        PrintWriter out = response.getWriter();
-        TournamentModel tourModel = new Gson().fromJson(jsonString.toString(), TournamentModel.class);
-
-        String pathInfoString = request.getPathInfo();
-        String[] pathArray = pathInfoString != null ? pathInfoString.split("/") : null;
-
-        if (pathArray != null && pathArray.length > 1) {
-            try {
-                Integer idInteger = Integer.parseInt(pathArray[1]);
-                tourModel.setTourId(idInteger);
-            } catch (Exception e) {
-                Extra.sendError(response, out, "Enter Valid ID");
-                e.printStackTrace();
-                return;
-            }
-            
-            
-            if (tourModel.isValid() && tourModel.getTourId() > 0) {
-                updateTournament(response, out, tourModel);
-            } else {
-                Extra.sendError(response, out, "Invalid tournament data or ID");
-            }
-        }
-        else {
-            Extra.sendError(response, out, "Tournament ID is required");
-        }
+       doPost(request, response);
     }
-
-    private void insertTournament(HttpServletRequest request, HttpServletResponse response, PrintWriter out, TournamentModel tourModel) {
-        String sql = "INSERT INTO tournament (name, start_date, end_date, match_category, season) VALUES (?, ?, ?, ?, ?)";
-        
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            
-            pstmt.setString(1, tourModel.getName());
-            pstmt.setString(2, tourModel.getStartDate());
-            pstmt.setString(3, tourModel.getEndDate());
-            pstmt.setString(4, tourModel.getMatchCategory());
-            pstmt.setInt(5, tourModel.getSeason());
-
-            
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
-                ResultSet generatedKeys = pstmt.getGeneratedKeys();
-                
-                if (generatedKeys.next()) {
-                    int tourId = generatedKeys.getInt(1);  
-                    
-                    String playersList = request.getParameter("teamList");
-                    
-                    addTourTeam(playersList, conn, tourId);
-                    
-                    Extra.sendSuccess(response, out, "Tournament inserted successfully");
-                } else {
-                    Extra.sendError(response, out, "Failed to retrieve the tournament ID");
-                }
-            } else {
-                Extra.sendError(response, out, "Failed to insert tournament");
-            }
-        } catch (SQLException e) {
-            Extra.sendError(response, out, e.getMessage());
-        }
-    }
-
-    private void addTourTeam(String playersList , Connection conn , Integer tourId) throws SQLException {
-    	if (playersList != null && !playersList.isEmpty()) {
-            Set<Integer> playerSet = new HashSet<>();
-            
-         
-            for (String it : playersList.split(",")) {
-                playerSet.add(Integer.parseInt(it));
-            }
-            
-      
-            String subQuery = "INSERT INTO tournament_team (tour_id, team_id) VALUES (?, ?)";
-            try (PreparedStatement subStatement = conn.prepareStatement(subQuery)) {
-                for (Integer playerId : playerSet) {
-                    subStatement.setInt(1, tourId);
-                    subStatement.setInt(2, playerId);
-                    subStatement.addBatch();  
-                }
-                subStatement.executeBatch();  
-            }
-        }
-    }
-
-    private void updateTournament( HttpServletResponse response, PrintWriter out, TournamentModel tourModel) {
-        String sql = "UPDATE tournament SET name = ?, start_date = ?, end_date = ?, match_category = ?, season = ? WHERE tour_id = ?";
-        
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-        
-            pstmt.setString(1, tourModel.getName());
-            pstmt.setString(2, tourModel.getStartDate());
-            pstmt.setString(3, tourModel.getEndDate());
-            pstmt.setString(4, tourModel.getMatchCategory());
-            pstmt.setInt(5, tourModel.getSeason());
-            pstmt.setInt(6, tourModel.getTourId());
-
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
-                Extra.sendSuccess(response, out, "Tournament updated successfully");
-            } else {
-                Extra.sendError(response, out, "No records updated, check the ID");
-            }
-        } catch (SQLException e) {
-            Extra.sendError(response, out, e.getMessage());
-        }
-    }
-
     
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
@@ -381,21 +426,19 @@ public class Tournament extends HttpServlet {
         if (pathArray.length == 2) {
             deleteTournament(response, out, tourId);
         }
-        else if (pathArray.length == 3 && pathArray[2].equals("teams") && request.getParameter("teamList") == null) {
+        else if (pathArray.length == 3 && pathArray[2].equals("teams") ) {
             deleteAllTeamFromTour(response, out, tourId);
         }
-        else if (pathArray.length == 3 && pathArray[2].equals("teams") && request.getParameter("teamList") != null) {
+        else if (pathArray.length == 4 && pathArray[2].equals("teams") ) {
            
-        	String teamList = request.getParameter("teamList");
-            for(String teamId : teamList.split(","))
-            	deleteTeamFromTour(response, out, tourId, teamId);
+            	deleteTeamFromTour(response, out, tourId, pathArray[3]);
             
-        } else {
+        }else {
             Extra.sendError(response, out, "Invalid request path");
         }
     }
 
-    private void deleteTournament(HttpServletResponse response, PrintWriter out, String tourId) {
+    private void deleteTournament(HttpServletResponse response, PrintWriter out, String tourId) throws ServletException, IOException {
         if (tourId == null) {
             Extra.sendError(response, out, "Tournament ID is required");
             return;
@@ -423,7 +466,8 @@ public class Tournament extends HttpServlet {
     }
 
     private void deleteAllTeamFromTour(HttpServletResponse response, PrintWriter out, String tourId) {
-        String sql = "DELETE FROM tournament_team WHERE tour_id = ?";
+        
+    	String sql = "DELETE FROM tournament_team WHERE tour_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

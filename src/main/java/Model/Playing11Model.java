@@ -12,7 +12,7 @@ public class Playing11Model {
     private int fifties;
     private int hundreds;
     private int wickets_taken;
-    private Integer teamId; 
+    private Integer team_id; 
     
 
     public int getFixtureId() {
@@ -96,11 +96,11 @@ public class Playing11Model {
     }
 
     public Integer getTeamId() {
-        return teamId;
+        return team_id;
     }
 
     public void setTeamId(Integer teamId) {
-        this.teamId = teamId;
+        this.team_id = teamId;
     }
 
     

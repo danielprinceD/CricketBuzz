@@ -3,43 +3,44 @@ package Model;
 import java.util.List;
 
 public class TeamModel {
-	private Integer teamId = -1;
-    private Integer captainId = -1;
-    private Integer viceCaptainId = -1;
-    private Integer wicketKeeperId = -1;
+	private Integer team_id = -1;
+    private Integer captain_id = -1;
+    private Integer vice_captain_id = -1;
+    private Integer wicket_keeper_id = -1;
     private String category;
+    public Integer team_players[];
     private String name;
 
     public int getTeamId() {
-        return teamId;
+        return team_id;
     }
 
     public void setTeamId(int teamId) {
-        this.teamId = teamId;
+        this.team_id = teamId;
     }
 
     public Integer getCaptainId() {
-        return captainId;
+        return  captain_id;
     }
 
     public void setCaptainId(int captainId) {
-        this.captainId = captainId;
+        this.captain_id = captainId;
     }
 
     public Integer getViceCaptainId() {
-        return viceCaptainId;
+        return vice_captain_id;
     }
 
     public void setViceCaptainId(int viceCaptainId) {
-        this.viceCaptainId = viceCaptainId;
+        this.vice_captain_id = viceCaptainId;
     }
 
     public Integer getWicketKeeperId() {
-        return wicketKeeperId;
+        return wicket_keeper_id;
     }
 
     public void setWicketKeeperId(int wicketKeeperId) {
-        this.wicketKeeperId = wicketKeeperId;
+        this.wicket_keeper_id = wicketKeeperId;
     }
 
     public String getCategory() {
@@ -60,7 +61,7 @@ public class TeamModel {
     
     
     public boolean isValid() {
-        if (name == null || category == null || captainId < 0 || viceCaptainId < 0 || wicketKeeperId < 0) {
+        if (name == null || category == null || captain_id < 0 || wicket_keeper_id < 0 || wicket_keeper_id < 0) {
             return false;
         }
         return true;
