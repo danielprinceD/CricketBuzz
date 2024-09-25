@@ -1,12 +1,11 @@
 package Model;
 
-public class FixtureModel {
-
+public class FixtureVO {
 	private int fixtureId = -1;
     private int tourId = -1;
     private int team1Id = -1;
     private int team2Id = -1;
-    private int winnerId = -1;
+    private Integer winnerId = -1;
     private int venueId = -1;
     private String matchDate;
     private String round;
@@ -95,5 +94,4 @@ public class FixtureModel {
         }
         return true;
     }
-
 }

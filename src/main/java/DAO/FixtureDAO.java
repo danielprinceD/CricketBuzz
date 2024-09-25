@@ -1,62 +1,29 @@
-package Tournament;
+package DAO;
 
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.io.BufferedReader;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.sql.*;
+import java.util.*;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import Model.FixtureVO;
+import Servlet.Extra;
 
-import Model.FixtureModel;
-import Team.Extra;
+public class FixtureDAO {
+	
+	private static final String BASE_SELECT_QUERY = "SELECT round, status, fixture_id, tour_id, team1_id, team2_id, winner_id, venue_id, match_date FROM fixture";
 
-public class Fixture extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
+	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
     private static final String USER = "root";
     private static final String PASS = "";
     
-    public static void addData(PrintWriter out , ResultSet rs , JSONObject fixtureJson)
-    {
-    	try {
-    		
-    		fixtureJson.put("fixture_id", rs.getInt("fixture_id"));
-            fixtureJson.put("tour_id", rs.getInt("tour_id"));
-            fixtureJson.put("tour_name", rs.getString("tour_name"));
-            
-            
-            
-            fixtureJson.put("winner_team", rs.getString("winner_team_name") + " "+ rs.getString("result") );
-            
-            fixtureJson.put("venue_id", rs.getInt("venue_id"));
-            fixtureJson.put("venue_name", rs.getString("venue_name"));
-            fixtureJson.put("venue_location", rs.getString("venue_location"));
-            
-            fixtureJson.put("match_date", rs.getDate("match_date").toString());
-    		
-    		
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-    }
-    private boolean isVenuePresent(FixtureModel fixtureModel) {
+    
+ private boolean isVenuePresent(FixtureVO fixtureModel) {
     	
         String venuePresentQuery = "SELECT COUNT(*) FROM venue WHERE venue_id = ?";
 
@@ -78,7 +45,7 @@ public class Fixture extends HttpServlet {
     }
 
 
-    private boolean isValidVenue(FixtureModel fixtureModel , int tourId) throws SQLException{
+    private boolean isValidVenue(FixtureVO fixtureModel , int tourId) throws SQLException{
        
     	if(!isVenuePresent(fixtureModel))
     		throw new SQLException("Venue ID " + fixtureModel.getVenueId() + " is not a venue");
@@ -153,7 +120,7 @@ public class Fixture extends HttpServlet {
         return false; 
     }
     
-    private boolean canUpdate(FixtureModel fm, Connection connection) {
+    private boolean canUpdate(FixtureVO fm, Connection connection) {
         String sql = "SELECT COUNT(*) " +
                      "FROM fixture " +
                      "WHERE venue_id = ? " +
@@ -179,7 +146,7 @@ public class Fixture extends HttpServlet {
         return false;
     }
     
-    private boolean isValidFixtureID(FixtureModel fm , Connection connection) {
+    private boolean isValidFixtureID(FixtureVO fm , Connection connection) {
     	 String sql = "SELECT COUNT(*) FROM fixture WHERE fixture_id = ?";
 
     try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -221,7 +188,7 @@ public class Fixture extends HttpServlet {
     }
 
     
-    private void addManyFixture(HttpServletResponse response, PrintWriter out, List<FixtureModel> fixtureModelList, String tourIdString, String method) throws ServletException , SQLException {
+    public void addManyFixture(HttpServletResponse response, PrintWriter out, List<FixtureVO> fixtureModelList, String tourIdString, String method) throws ServletException , SQLException {
       
     	int totalRowsAffected = 0;
 
@@ -237,7 +204,7 @@ public class Fixture extends HttpServlet {
         HashSet<String> matchVenue = new HashSet<>();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
-        	if(!isPut && tourIdString == null)
+        	if(!isPut && ( tourIdString == null ))
         		throw new SQLException("Tour ID is required");
         	int tourId =  Integer.parseInt(tourIdString);
         	
@@ -246,7 +213,7 @@ public class Fixture extends HttpServlet {
         		
             
 
-            for (FixtureModel fm : fixtureModelList) {
+            for (FixtureVO fm : fixtureModelList) {
             	if(isPut)
             	{
             		if(!isValidFixtureID(fm , conn))
@@ -265,18 +232,19 @@ public class Fixture extends HttpServlet {
             String sql = (isPut ) ? updateSql : insertSql;
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                for (FixtureModel fixtureModel : fixtureModelList) {
+            	
+                for (FixtureVO fixtureModel : fixtureModelList) {
                 	
                 	if(!checkTeamInTournament(fixtureModel.getTeam1Id() , tourId))
                 		throw new SQLException("Team 1 ID " + fixtureModel.getTeam1Id() + " is not in tournament");
                 	
                 	if(!checkTeamInTournament(fixtureModel.getTeam2Id() , tourId))
-                		throw new SQLException("Team 2 ID " + fixtureModel.getTeam1Id() + " is not in tournament");
+                		throw new SQLException("Team 2 ID " + fixtureModel.getTeam2Id() + " is not in tournament");
                 	
-                	if(!fixtureModel.isValid())
+                	if( !fixtureModel.isValid() )
                 		throw new SQLException("Team1 ID , Team2ID , Venue ID , Mathdate is required");
                 	
-                    if (fixtureModel.getTeam1Id() == fixtureModel.getTeam2Id())
+                    if (fixtureModel.getTeam1Id() == fixtureModel.getTeam2Id() )
                         throw new SQLException("Team 1 and Team 2 cannot be the same");
                     
                     if(isPut && !isValidTournament(tourId))
@@ -292,23 +260,25 @@ public class Fixture extends HttpServlet {
                     if (!isValidTeam(fixtureModel.getTeam2Id()))
                         throw new SQLException("Team " + fixtureModel.getTeam2Id() + " is not a Team");
                     
-                    int winnerId = fixtureModel.getWinnerId();
-                    
-                    if(winnerId > 0)
-                    {
-                    	if( winnerId != fixtureModel.getTeam1Id() && winnerId != fixtureModel.getTeam2Id())
-                    		throw new SQLException("Winner cannot be apart from team1 or team2");
+                    Integer winnerId = (fixtureModel.getWinnerId() < 0) ? (Integer) fixtureModel.getWinnerId()  : -1;
+
+                    if(winnerId != -1 && winnerId != fixtureModel.getTeam1Id() && winnerId != fixtureModel.getTeam2Id()) {
+                        throw new SQLException("Winner cannot be apart from team1 or team2");
                     }
+                    
+                    
+
                    
                     pstmt.setInt(1, fixtureModel.getTeam1Id());
                     pstmt.setInt(2, fixtureModel.getTeam2Id());
                     pstmt.setInt(3, fixtureModel.getVenueId());
+                    
                     pstmt.setString(4, fixtureModel.getMatchDate());
                     if (method.equalsIgnoreCase("PUT")) {
-                    	pstmt.setObject(5, fixtureModel.getWinnerId() < 0 ? JSONObject.NULL : fixtureModel.getWinnerId());
+                    	pstmt.setObject(5,  (fixtureModel.getWinnerId() < 0) ? JSONObject.NULL : (int)fixtureModel.getWinnerId());
                         pstmt.setInt(6, tourId);
                         
-                        pstmt.setObject(7 , fixtureModel.getRound() == null ? JSONObject.NULL : fixtureModel.getRound());
+                        pstmt.setObject(7 , (fixtureModel.getRound() == null) ? JSONObject.NULL : fixtureModel.getRound());
                         pstmt.setString(8, fixtureModel.getStatus());
                         pstmt.setInt(9, fixtureModel.getFixtureId());
                     } else {
@@ -335,19 +305,22 @@ public class Fixture extends HttpServlet {
         } catch (SQLException e) {
             Extra.sendError(response, out, e.getMessage());
         }catch (Exception e) {
-        	Extra.sendError(response, out, "Enter valid parameters");
+        	Extra.sendError(response, out,e.getMessage()  );
+        	e.printStackTrace();
 		}
     }
 
 
     
     
-    private void deleteAllFixture(HttpServletRequest request, HttpServletResponse response, PrintWriter out) {
-        StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE");
-        List<Object> params = new ArrayList<>();
+    public void deleteAllFixture(HttpServletRequest request, HttpServletResponse response, PrintWriter out) {
+       
+    	StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE");
+        
+    	List<Object> params = new ArrayList<>();
 
-        String tourId = request.getParameter("tour_id");
-        String fixtureId = request.getParameter("fixture_id");
+        String tourId = request.getParameter("tourId");
+        String fixtureId = request.getParameter("fixtureId");
 
         boolean hasCondition = false;
 
@@ -457,80 +430,51 @@ public class Fixture extends HttpServlet {
             e.printStackTrace();
         }
     }
-
-
-
     
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
+	
+    public List<FixtureVO> getFixturesByTour(Integer tourId, Integer fixtureId) throws SQLException {
         
-    	
-        response.setContentType("application/json");
-		PrintWriter out = response.getWriter();
-		
-			if(request.getParameter("tour_id") == null && request.getParameter("fixture_id") == null)
-				Extra.sendError(response, out, "Tournament ID / Fixture ID is required");
-			else getFixtureByTour(response, out, request );
-		
-		
-		
-    }
+    	StringBuilder sql = new StringBuilder(BASE_SELECT_QUERY);
+        List<Object> params = new ArrayList<>();
+        
+        boolean hasConditions = false;
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
+        if (tourId != null) {
+            sql.append(" WHERE tour_id = ?");
+            params.add(tourId);
+            hasConditions = true;
+        }
 
-    	
-    	
-    	StringBuilder jsonString = new StringBuilder();
-        BufferedReader reader = request.getReader();
-        String line;
-        
-        while((line = reader.readLine()) != null)
-        		jsonString.append(line);
-        
-        PrintWriter out = response.getWriter();
-        java.lang.reflect.Type fixtureListType = new TypeToken<List<FixtureModel>>() {}.getType();
-        List<FixtureModel> fixtureModelList = new Gson().fromJson( jsonString.toString() , fixtureListType );
-        
-        String pathInfoString = request.getPathInfo();		
-        String[] pathArray = pathInfoString != null ?  pathInfoString.split("/") : null;
-        
-        if ((pathArray == null || pathArray.length <= 1)) {
-             try {
-				addManyFixture(response, out, fixtureModelList, request.getParameter("tour_id"), request.getMethod());
-			} catch (ServletException | SQLException e) {
-				
-				e.printStackTrace();
-			}
-        } else {
-            Extra.sendError(response, out, "Invalid tour_id or missing path parameters.");
+        if (fixtureId != null) {
+            sql.append( hasConditions ? " AND fixture_id = ?" : " WHERE fixture_id = ?");
+            params.add(fixtureId);
+        }
+
+        try (
+        		Connection conn = DriverManager.getConnection(DB_URL , USER , PASS);
+        		PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                pstmt.setObject(i + 1, params.get(i));
+            }
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                List<FixtureVO> fixtures = new ArrayList<>();
+                while (rs.next()) {
+                    FixtureVO fixture = new FixtureVO();
+                    fixture.setRound(rs.getString("round"));
+                    fixture.setStatus(rs.getString("status"));
+                    fixture.setFixtureId(rs.getInt("fixture_id"));
+                    fixture.setTourId(rs.getInt("tour_id"));
+                    fixture.setTeam1Id(rs.getInt("team1_id"));
+                    fixture.setTeam2Id(rs.getInt("team2_id"));
+                    fixture.setWinnerId(rs.getObject("winner_id") != null ? rs.getInt("winner_id") : -1);
+                    fixture.setVenueId(rs.getInt("venue_id"));
+                    fixture.setMatchDate(rs.getString("match_date"));
+                    
+                    fixtures.add(fixture);
+                }
+                return fixtures;
+            }
         }
     }
-    
-    @Override
-    protected void doDelete(HttpServletRequest request, HttpServletResponse response) 
-            throws ServletException, IOException {
-    	
-		
-		PrintWriter out = response.getWriter();
-    	
-		try {
-			
-			deleteAllFixture(request ,response , out);
-		} catch (Exception e) {
-			Extra.sendError(response, out, e.getMessage());
-		} 
-		
-		
-        
-    }
-    
-    protected void doPut(HttpServletRequest request, HttpServletResponse response)throws IOException , ServletException {
-    	
-    	doPost(request, response);
-    }
-    
 }
-

@@ -1,9 +1,8 @@
-package Tournament;
+package Servlet;
+
 import java.io.BufferedReader;
 import com.google.gson.reflect.TypeToken;
-
 import DAO.TournamentDAO;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -19,7 +18,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import com.google.gson.Gson;
 import Model.TournamentVO;
-import Servlet.Extra;
 
 public class TournamentServlet extends HttpServlet {
 	

@@ -19,7 +19,7 @@ public class VenueDAO {
     private static final String SELECT_BY_ID = "SELECT * FROM venue WHERE venue_id = ?";
 
     
-    public void insertVenue(VenueVO venue) throws SQLException {
+    public int insertVenue( VenueVO venue) throws SQLException {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(INSERT_VENUE)) {
 
@@ -30,11 +30,11 @@ public class VenueDAO {
             pstmt.setLong(5, venue.getCapacity());
             pstmt.setString(6, venue.getCurator());
 
-            pstmt.executeUpdate();
+            return pstmt.executeUpdate();
         }
     }
 
-    public void updateVenue(VenueVO venue) throws SQLException {
+    public int updateVenue(VenueVO venue) throws SQLException {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(UPDATE_VENUE)) {
 
@@ -46,7 +46,7 @@ public class VenueDAO {
             pstmt.setString(6, venue.getCurator());
             pstmt.setInt(7, venue.getVenueId());
 
-            pstmt.executeUpdate();
+            return pstmt.executeUpdate();
         }
     }
 

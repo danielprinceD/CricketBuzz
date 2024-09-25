@@ -9,7 +9,7 @@
     
     <servlet>
         <servlet-name>Tournaments</servlet-name>
-        <servlet-class>Tournament.TournamentServlet</servlet-class>
+        <servlet-class>Servlet.TournamentServlet</servlet-class>
     </servlet>
     
      <servlet>
@@ -20,7 +20,7 @@
     
      <servlet>
         <servlet-name>Fixtures</servlet-name>
-        <servlet-class>Tournament.Fixture</servlet-class>
+        <servlet-class>Servlet.FixtureServlet</servlet-class>
     </servlet>
     
      <servlet>
