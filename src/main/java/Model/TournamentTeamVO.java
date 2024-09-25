@@ -1,4 +1,4 @@
-package Model;
+package model;
 
 public class TournamentTeamVO {
     private int teamId = -1;

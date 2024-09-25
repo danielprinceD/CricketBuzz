@@ -1,4 +1,4 @@
-package Model;
+package model;
 
 public class UserVO {
     private int user_id = -1;

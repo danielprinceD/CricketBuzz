@@ -1,4 +1,4 @@
-package Model;
+package model;
 
 public class FixtureVO {
 	private int fixtureId = -1;
