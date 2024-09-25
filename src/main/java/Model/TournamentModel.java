@@ -4,6 +4,7 @@ import java.util.List;
 
 
 public class TournamentModel {
+	
     private int tourId = -1;
     private String name;
     private String startDate; 
