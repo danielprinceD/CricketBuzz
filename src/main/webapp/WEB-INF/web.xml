@@ -35,29 +35,29 @@
    
     <servlet>
         <servlet-name>Playing11</servlet-name>
-        <servlet-class>Tournament.Playing_11</servlet-class>
+        <servlet-class>Servlet.PlayingXIServlet</servlet-class>
     </servlet> 
    
     <servlet>
         <servlet-name>Commentary</servlet-name>
-        <servlet-class>Tournament.Commentary</servlet-class>
+        <servlet-class>Servlet.CommentaryServlet</servlet-class>
     </servlet> 
    
     <servlet>
         <servlet-name>OverSummary</servlet-name>
-        <servlet-class>Tournament.Over_Summary</servlet-class>
+        <servlet-class>Servlet.OverSummaryServlet</servlet-class>
     </servlet>
     
     <servlet>
         <servlet-name>User</servlet-name>
-        <servlet-class>Team.User</servlet-class>
+        <servlet-class>Servlet.UserServlet</servlet-class>
     </servlet> 
     
     
     <servlet>
         <servlet-name>MatchDetails</servlet-name>
-        <servlet-class>Tournament.MatchDetails</servlet-class>
-    </servlet> 
+        <servlet-class>Servlet.MatchDetailServlet</servlet-class>
+    </servlet>
    
     <servlet-mapping>
         <servlet-name>MatchDetails</servlet-name>

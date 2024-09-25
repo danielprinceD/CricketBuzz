@@ -1,6 +1,6 @@
 package Model;
 
-public class MatchDetailModel {
+public class MatchDetailVO {
 	
 	private int fixture_id = -1;
 	private int toss_win = -1;

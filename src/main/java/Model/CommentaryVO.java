@@ -1,32 +1,31 @@
 package Model;
 
-public class CommentaryModel {
-    private Integer commentary_id;
-    private Integer fixture_id;
-//    private Integer over_count;
-//    private Integer ball;
-    private String run_type;
+public class CommentaryVO {
+	
+    private Integer commentaryId;
+    private Integer fixtureId;
+    private String runType;
     private String commentaryText;
-    private Integer batter_id;
-    private Integer bowler_id;
-    private String date_time;
-    private Integer catcher_id;
+    private Integer batterId;
+    private Integer bowlerId;
+    private String dateTime;
+    private Integer catcherId;
 
 
     public int getCommentaryId() {
-        return commentary_id;
+        return commentaryId;
     }
 
     public void setCommentaryId(int commentaryId) {
-        this.commentary_id = commentaryId;
+        this.commentaryId = commentaryId;
     }
 
     public int getFixtureId() {
-        return fixture_id;
+        return fixtureId;
     }
 
     public void setFixtureId(int fixtureId) {
-        this.fixture_id = fixtureId;
+        this.fixtureId = fixtureId;
     }
 
 //    public int getOverCount() {
@@ -46,11 +45,11 @@ public class CommentaryModel {
 //    }
 
     public String getRunType() {
-        return run_type;
+        return runType;
     }
 
     public void setRunType(String runType) {
-        this.run_type = runType;
+        this.runType = runType;
     }
 
     public String getCommentaryText() {
@@ -62,39 +61,39 @@ public class CommentaryModel {
     }
 
     public int getBatterId() {
-        return batter_id;
+        return batterId;
     }
 
     public void setBatterId(int batterId) {
-        this.batter_id = batterId;
+        this.batterId = batterId;
     }
 
     public int getBowlerId() {
-        return bowler_id;
+        return bowlerId;
     }
 
     public void setBowlerId(int bowlerId) {
-        this.bowler_id = bowlerId;
+        this.bowlerId = bowlerId;
     }
 
     public String getDateTime() {
-        return date_time;
+        return dateTime;
     }
 
     public void setDateTime(String dateTime) {
-        this.date_time = dateTime;
+        this.dateTime = dateTime;
     }
 
     public int getCatcherId() {
-        return catcher_id;
+        return catcherId;
     }
 
     public void setCatcherId(int catcherId) {
-        this.catcher_id = catcherId;
+        this.catcherId = catcherId;
     }
 
     public boolean isValid() {
-        return fixture_id > 0 ;
+        return fixtureId > 0 ;
     }
 }
 

@@ -1,11 +1,11 @@
 package Model;
 
-public class UserModel {
+public class UserVO {
     private int user_id = -1;
     private String name;
     private String email;
     private String password;
-    private AddressModel address;
+    private AddressVO address;
     private String role = "USER";
 
     public int getId() {
@@ -36,11 +36,11 @@ public class UserModel {
         this.password = password;
     }
 
-    public AddressModel getAddress() {
+    public AddressVO getAddress() {
         return address;
     }
 
-    public void setAddress(AddressModel address) {
+    public void setAddress(AddressVO address) {
         this.address = address;
     }
 

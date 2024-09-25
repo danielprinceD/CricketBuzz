@@ -1,9 +1,9 @@
 package Model;
 
-public class Playing11Model {
+public class PlayingXIVO {
     
-    private int fixture_id;
-    private int player_id;
+    private int fixture_id = -1;
+    private int player_id = -1;
     private String role;
     private int runs;
     private int balls_faced;
@@ -12,7 +12,7 @@ public class Playing11Model {
     private int fifties;
     private int hundreds;
     private int wickets_taken;
-    private Integer team_id; 
+    private Integer team_id = -1; 
     
 
     public int getFixtureId() {
