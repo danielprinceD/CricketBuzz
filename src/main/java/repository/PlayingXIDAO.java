@@ -9,14 +9,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import model.*;
+import utils.PlayingXIRedisUtil;
 import controller.*;
 
 public class PlayingXIDAO {
@@ -26,7 +24,7 @@ public class PlayingXIDAO {
     private static final String PASS = "";
     
     
-private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) {
+    private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) {
     	
     	String sql = "SELECT COUNT(*) FROM playing_11 WHERE team_id = ? AND fixture_id = ? AND player_id = ?";
     	
@@ -137,7 +135,8 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
     }
     
     public void updatePlaying11(List<PlayingXIVO> playing11List, String fixtureId, String teamId) throws SQLException {
-        String sql = "UPDATE playing_11 SET role = ?, runs = ?, balls_faced = ?, fours = ?, sixes = ?, fifties = ?, hundreds = ?, wickets_taken = ? "
+        
+    	String sql = "UPDATE playing_11 SET role = ?, runs = ?, balls_faced = ?, fours = ?, sixes = ?, fifties = ?, hundreds = ?, wickets_taken = ? "
                    + "WHERE fixture_id = ? AND player_id = ? AND team_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -174,13 +173,12 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
                 pstmt.setInt(9, Integer.parseInt(fixtureId));
                 pstmt.setInt(10, model.getPlayerId());
                 pstmt.setInt(11, Integer.parseInt(teamId));
-                
                 pstmt.addBatch();
             }
 
             int[] rowsAffected = pstmt.executeBatch();
             if (rowsAffected.length > 0) {
-                System.out.println("Player data updated successfully.");
+            	System.out.println("Player data updated successfully.");
             } else {
                 System.out.println("Failed to update player data.");
             }
@@ -224,7 +222,11 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
 	        }
 
 	        StringBuilder sql = new StringBuilder("SELECT * FROM playing_11 WHERE fixture_id = ? AND team_id = ?");
+	        
 
+	        JSONArray playing11Array = new JSONArray();
+	        
+	        
 	        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
 	             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
@@ -232,7 +234,6 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
 	            pstmt.setInt(2, Integer.parseInt(teamId));
 
 	            try (ResultSet rs = pstmt.executeQuery()) {
-	                JSONArray playing11Array = new JSONArray();
 	               
 	                while (rs.next()) {
 	                    JSONObject playing11 = new JSONObject();
@@ -251,6 +252,9 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
 	                if (playing11Array.length() > 0) {
 	                    response.setContentType("application/json");
 	                    out.print(playing11Array.toString());
+	                    
+	                    PlayingXIRedisUtil.setPlayingXIByFixtureIdByTeamId(playing11Array, Integer.parseInt(fixtureId) , Integer.parseInt(teamId) );
+	                    
 	                } else {
 	                    Extra.sendError(response, out, "No records found for the provided fixture_id and team_id.");
 	                }
@@ -302,6 +306,7 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
 	            int rowsAffected = pstmt.executeUpdate();
 	            PrintWriter out = response.getWriter();
 	            if (rowsAffected > 0) {
+	            	
 	                out.println("Player record deleted successfully.");
 	            } else {
 	                out.println("Failed to delete player record.");
@@ -331,6 +336,8 @@ private boolean checkDuplicatePlayer(int teamId , int fixtureId , int playerId) 
 	            }
 	        } catch (SQLException e) {
 	            e.printStackTrace();
+	            
+	            
 	            response.getWriter().println("Database error: " + e.getMessage());
 	        }
 	    }

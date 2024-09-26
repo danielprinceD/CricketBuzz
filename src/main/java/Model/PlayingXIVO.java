@@ -1,5 +1,9 @@
 package model;
 
+import org.json.JSONObject;
+
+import com.google.gson.Gson;
+
 public class PlayingXIVO {
     
     private int fixture_id = -1;
@@ -103,6 +107,13 @@ public class PlayingXIVO {
         this.team_id = teamId;
     }
 
+    public static PlayingXIVO fromJson(String jsonString) {
+		return new Gson().fromJson(jsonString, PlayingXIVO.class);
+	}
+    
+    public String toJson() {
+		return new JSONObject(this).toString();
+	}
     
 }
 

@@ -2,6 +2,10 @@ package model;
 
 import java.util.List;
 
+import org.json.JSONObject;
+
+import com.google.gson.Gson;
+
 public class TournamentVO {
     private int tourId = -1;
     private String name;
@@ -96,4 +100,13 @@ public class TournamentVO {
     public void setParticipatedTeams(List<TournamentTeamVO> participatedTeams) {
         this.participatedTeams = participatedTeams;
     }
+    
+    public static TournamentVO fromJson(String jsonString) {
+		return new Gson().fromJson(jsonString, TournamentVO.class);
+	}
+    
+    public String toJson() {
+		return new JSONObject(this).toString();
+	}
+    
 }

@@ -31,6 +31,7 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 			return;
 		}
 		
+		
 		String email = (String) session.getAttribute("email");
 		Integer id = (Integer) session.getAttribute("user_id");
         String role = (String) session.getAttribute("role");

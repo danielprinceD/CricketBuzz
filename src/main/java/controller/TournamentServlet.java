@@ -3,6 +3,8 @@ package controller;
 import java.io.BufferedReader;
 import com.google.gson.reflect.TypeToken;
 import repository.*;
+import utils.TournamentRedisUtil;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -44,14 +46,15 @@ public class TournamentServlet extends HttpServlet {
             String pathInfo = request.getPathInfo();
             
             if (pathInfo == null || pathInfo.equals("/")) {
-            	
-                List<TournamentVO> tournaments = tournamentDAO.getAllTournaments();
+                List<TournamentVO> tournaments  = tournamentDAO.getAllTournaments();
+                
                 out.print(new Gson().toJson(tournaments));
            
             } else {
             	
                 int tourId = Integer.parseInt(pathInfo.substring(1));
                 TournamentVO tournament = tournamentDAO.getTournamentById(tourId);
+                
 
                 if (tournament != null) {
                     out.print(new Gson().toJson(tournament));
@@ -127,7 +130,10 @@ public class TournamentServlet extends HttpServlet {
                 }
 
                 if (rowsAffected > 0) {
-                    conn.commit();
+                	conn.commit();
+                    
+                	TournamentRedisUtil.setTournamentsById(tournamentVO, tourId);
+                    
                     Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
                 } else {
                     conn.rollback();
@@ -145,7 +151,6 @@ public class TournamentServlet extends HttpServlet {
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
        doPost(request, response);
     }
     
@@ -176,7 +181,10 @@ public class TournamentServlet extends HttpServlet {
             
         }else {
             Extra.sendError(response, out, "Invalid request path");
+            return;
         }
+        
+        
     }
     
 }
