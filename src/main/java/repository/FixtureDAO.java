@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import model.FixtureVO;
+import utils.FixtureRedisUtil;
 import controller.*;
 
 public class FixtureDAO {
@@ -231,7 +232,7 @@ public class FixtureDAO {
             
             String sql = (isPut ) ? updateSql : insertSql;
 
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            try (PreparedStatement pstmt = conn.prepareStatement(sql ,Statement.RETURN_GENERATED_KEYS)) {
             	
                 for (FixtureVO fixtureModel : fixtureModelList) {
                 	
@@ -266,7 +267,6 @@ public class FixtureDAO {
                         throw new SQLException("Winner cannot be apart from team1 or team2");
                     }
                     
-                    
 
                    
                     pstmt.setInt(1, fixtureModel.getTeam1Id());
@@ -284,16 +284,25 @@ public class FixtureDAO {
                     } else {
                         pstmt.setInt(5, tourId);
                         pstmt.setObject(6, fixtureModel.getRound() == null ? JSONObject.NULL : fixtureModel.getRound());
+                        
+                        try (ResultSet generatedKey = pstmt.getGeneratedKeys()){
+                        	if(generatedKey.next())
+                        		fixtureModel.setFixtureId(generatedKey.getInt(1));
+                        }
                     }
                     
-
+                    
                     totalRowsAffected += pstmt.executeUpdate();
+                    
                 }
                 
-                
                 conn.commit();
-
+                
+                if( FixtureRedisUtil.isCached() )
+                	FixtureRedisUtil.setFixtureByTourID(fixtureModelList, tourId);
+                
                 if (totalRowsAffected > 0) {
+                	
                     Extra.sendSuccess(response, out, totalRowsAffected + " fixtures added/updated successfully.");
                 } else {
                     Extra.sendError(response, out, "No fixtures were added/updated.");
@@ -354,6 +363,13 @@ public class FixtureDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	
+            	if(fixtureId != null && FixtureRedisUtil.isCached())
+            		FixtureRedisUtil.deleteFixtureById(Integer.parseInt(fixtureId));
+            	
+            	if(tourId != null && FixtureRedisUtil.isCached())
+            		FixtureRedisUtil.deleteFixturesByTournamentId(Integer.parseInt(tourId));
+            	
                 Extra.sendSuccess(response, out, "Fixtures Deleted Successfully");
             } else {
                 Extra.sendError(response, out, "No Data Found for the provided parameters");
@@ -449,7 +465,23 @@ public class FixtureDAO {
             sql.append( hasConditions ? " AND fixture_id = ?" : " WHERE fixture_id = ?");
             params.add(fixtureId);
         }
-
+        List<FixtureVO> fixtures = new ArrayList<>();
+        
+        if(tourId != null)
+        {
+        	fixtures = FixtureRedisUtil.getFixturesByTourId(tourId);
+        	if(fixtures.size() > 0)
+        		return fixtures;
+        }
+        
+        if(fixtureId != null)
+        {
+        	fixtures = FixtureRedisUtil.getFixtureById(fixtureId);
+        	if(fixtures.size() > 0)
+        		return fixtures;
+        }
+        
+        
         try (
         		Connection conn = DriverManager.getConnection(DB_URL , USER , PASS);
         		PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -458,7 +490,6 @@ public class FixtureDAO {
             }
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                List<FixtureVO> fixtures = new ArrayList<>();
                 while (rs.next()) {
                     FixtureVO fixture = new FixtureVO();
                     fixture.setRound(rs.getString("round"));
@@ -473,6 +504,15 @@ public class FixtureDAO {
                     
                     fixtures.add(fixture);
                 }
+                
+                if(fixtures.size() > 0 && tourId != null)
+                	FixtureRedisUtil.setFixtureByTourID(fixtures, tourId);
+                
+                if(fixtures.size() > 0 && fixtureId != null)
+                {
+                	
+                }
+                
                 return fixtures;
             }
         }

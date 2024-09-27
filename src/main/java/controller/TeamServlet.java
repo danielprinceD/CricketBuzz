@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import repository.*;
+import utils.TeamRedisUtil;
+
 import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -19,6 +21,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import model.*;
+import redis.clients.jedis.Jedis;
 
 public class TeamServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -27,6 +30,7 @@ public class TeamServlet extends HttpServlet {
     private static final String PASS = "";
     
     TeamDAO teamDAO = new TeamDAO();
+    
     
     protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -62,9 +66,12 @@ public class TeamServlet extends HttpServlet {
             		return;
             	}
             }
+            else {
+            	
+            	out.print(teamsJson);
+            	out.flush();
+            }
             
-            out.print(teamsJson);
-            out.flush();
         } catch (SQLException e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
@@ -117,54 +124,9 @@ public class TeamServlet extends HttpServlet {
         Type teamListType = new TypeToken<List<TeamVO>>() {}.getType();
         List<TeamVO> teams = new Gson().fromJson(jsonString.toString(), teamListType);
         
-        for (TeamVO teamVO : teams) {
-        	
-        	if(teamVO == null)
-        	{
-        		Extra.sendError(response, out, "Not a Valid JSON Body");
-        		return;
-        	}
-        	
-            Set<Integer> playerSet = new HashSet<>();
-            
-            
-            
-            if (!teamDAO.validatePlayers(teamVO, playerSet, response, out)) return;
-           
-            String sql =teamDAO.prepareSqlStatement(request, teamVO, response, out);
-            
-            if (sql == null) return;
-
-            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-                 PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-            	
-                conn.setAutoCommit(false);
-                teamDAO.setPreparedStatementValues(pstmt, teamVO);
-
-                int rowsAffected = pstmt.executeUpdate();
-                int teamId = teamVO.getTeamId();
-          
-                if (teamId < 0 && request.getMethod().equalsIgnoreCase("POST")) {
-                    teamId = teamDAO.getGeneratedTeamId(pstmt);
-                }
-
-                if (teamId > 0 ){
-                    teamDAO.addPlayersToTeam(conn, playerSet, teamId);
-                }
-
-                if (rowsAffected > 0) {
-                    conn.commit();
-                    Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
-                } else {
-                    conn.rollback();
-                    Extra.sendError(response, out, "Failed to insert/update team");
-                }
-
-            } catch (SQLException e) {
-                Extra.sendError(response, out, e.getMessage());
-                e.printStackTrace();
-            }
-        }   
+        teamDAO.addTeams(request, response, teams);
+        
+        
     }
     @Override
     protected void doPut(HttpServletRequest request , HttpServletResponse response) throws ServletException , IOException{

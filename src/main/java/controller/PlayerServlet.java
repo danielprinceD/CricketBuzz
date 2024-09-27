@@ -67,7 +67,7 @@ public class PlayerServlet extends HttpServlet {
 	    {
 	    	
 	    	try {
-				PlayerVO player =  playerDAO.getPlayerById(Integer.parseInt(pathArr[1]));
+				PlayerVO player =  playerDAO.getPlayerById(Integer.parseInt(pathArr[1])) ;
 				
 				if(player == null)
 				{
@@ -151,6 +151,7 @@ public class PlayerServlet extends HttpServlet {
 	        out.println("Database error: " + e.getMessage());
 	        e.printStackTrace();
 	    }
+	    
 	}
 
 

@@ -1,5 +1,6 @@
 package utils;
 
+import java.util.Set;
 import org.json.JSONArray;
 import config.RedisConfig;
 import redis.clients.jedis.Jedis;
@@ -9,6 +10,16 @@ public class PlayingXIRedisUtil {
 	
 	public static String FIXTURE_REDIX_PREFIX = "playingXI:";
 	public static String TEAM_REDIX_PREFIX = "team:";
+	
+	public static boolean isCached(int fixtureId , int teamId ) {
+			
+			try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
+				Set<String> cachedData = jedis.keys(FIXTURE_REDIX_PREFIX + fixtureId + ":" + TEAM_REDIX_PREFIX + teamId );
+				if(cachedData != null && !cachedData.isEmpty())
+					return true; 
+			}
+			return false;
+	}
 	
 	public static JSONArray getPlayingXIByFixtureIdByTeamId(int fixtureID , int teamID){
 		
@@ -28,13 +39,16 @@ public class PlayingXIRedisUtil {
 		
 		try(Jedis jedis = RedisConfig.getJedis().getResource())
     	{
+							
     		String key = FIXTURE_REDIX_PREFIX + fixtureID + ":" + TEAM_REDIX_PREFIX + teamID;
     		jedis.set(key  , playingXIs.toString() );
     		System.out.println("Data update in redis");
+			
     	}
 		
 	}
 	
+
 	
 	public static void deleteByFixtureByIdByTeamId(int fixtureID , int teamID) {
 		try(Jedis jedis = RedisConfig.getJedis().getResource())

@@ -1,6 +1,7 @@
 package model;
 
 public class FixtureVO {
+	
 	private int fixtureId = -1;
     private int tourId = -1;
     private int team1Id = -1;

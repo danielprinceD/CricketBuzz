@@ -1,5 +1,6 @@
 package repository;
 
+import java.beans.Statement;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -14,7 +15,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import com.google.gson.Gson;
+
 import model.CommentaryVO;
+import utils.CommentaryRedisUtil;
 import controller.*;
 
 public class CommentaryDAO {
@@ -35,8 +40,8 @@ public class CommentaryDAO {
      response.setCharacterEncoding("UTF-8");
 
      try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-          PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+          ) {
+    	 PreparedStatement pstmt = conn.prepareStatement(sql , java.sql.Statement.RETURN_GENERATED_KEYS);
      	String fixtureId = request.getParameter("fixture_id");
      	
      	
@@ -134,6 +139,9 @@ public class CommentaryDAO {
              
          	
              pstmt.setInt(1, Integer.parseInt(fixtureId));
+             tourModel.setFixtureId(Integer.parseInt(fixtureId));
+             tourModel.setBall(ballCount);
+             tourModel.setOverCount(overCount);
              pstmt.setInt(2, overCount );
              pstmt.setInt(3, ballCount );
              pstmt.setString(4, tourModel.getRunType());
@@ -147,7 +155,16 @@ public class CommentaryDAO {
 
          int[] rowsAffected = pstmt.executeBatch(); 
 
+         try(ResultSet generatedKeys = pstmt.getGeneratedKeys())
+         {
+        	 if(generatedKeys.next()) {
+        		 System.out.println(generatedKeys.getInt(1));
+        		 for(CommentaryVO commentary : commentaryList)
+        			 commentary.setCommentaryId(generatedKeys.getInt(1));            		 
+        	 }
+         }
          if (rowsAffected.length > 0) {
+        	 CommentaryRedisUtil.setCommentaryByTourId(Integer.parseInt(fixtureId), commentaryList);
              out.println("Commentary data inserted successfully.");
          } else {
              out.println("Failed to insert commentary data.");
@@ -199,6 +216,7 @@ public class CommentaryDAO {
     	PrintWriter out = response.getWriter();
     	String commentaryId = request.getParameter("commentary_id");
         String fixtureId = request.getParameter("fixture_id");
+        
 
         if ((commentaryId == null || commentaryId.isEmpty()) && (fixtureId == null || fixtureId.isEmpty())) {
             throw new SQLException("Either commentary_id or fixture_id must be provided.");
@@ -229,6 +247,30 @@ public class CommentaryDAO {
             sql.append("fixture_id = ?");
             params.add(Integer.parseInt(fixtureId));
         }
+        JSONArray commentaryArray = CommentaryRedisUtil.getByFixtureID(Integer.parseInt(fixtureId));
+        
+        if(commentaryArray.length() > 0)
+        {
+        	out.print(commentaryArray);
+        	return;
+        }
+        
+        if(commentaryId != null && !commentaryId.isEmpty())
+        {
+        	commentaryArray = CommentaryRedisUtil.getByCommentaryID(Integer.parseInt(commentaryId));
+        	if(!commentaryArray.isEmpty())
+        	{
+        		out.print(commentaryArray);
+        		return;
+        	}
+        }
+        
+        if(fixtureId != null && !fixtureId.isEmpty())
+        {
+        	commentaryArray = CommentaryRedisUtil.getByFixtureID(Integer.parseInt(fixtureId));
+        	if(!commentaryArray.isEmpty())
+        		out.print(commentaryArray);
+        }
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -238,12 +280,11 @@ public class CommentaryDAO {
             }
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                JSONArray commentaryArray = new JSONArray();
 
                 while (rs.next()) {
                     JSONObject commentary = new JSONObject();
-                    commentary.put("commentary_id", rs.getInt("commentary_id"));
-                    commentary.put("fixture_id", rs.getInt("fixture_id"));
+                    commentary.put("commentaryId", rs.getInt("commentary_id"));
+                    commentary.put("fixtureId", rs.getInt("fixture_id"));
                     
                     
                     commentary.put("overCount", rs.getInt("over_count"));
@@ -260,6 +301,11 @@ public class CommentaryDAO {
 
                 if (commentaryArray.length() > 0) {
                     response.setContentType("application/json");
+                    
+                    java.lang.reflect.Type listType = new com.google.gson.reflect.TypeToken<List<CommentaryVO>>() {}.getType();
+        	        List<CommentaryVO> newCommentaries = new Gson().fromJson(commentaryArray.toString(), listType);
+                    CommentaryRedisUtil.setCommentaryByTourId( Integer.parseInt(fixtureId) , newCommentaries );
+                    
                     out.print(commentaryArray.toString());
                 } else {
                     Extra.sendError(response, out, "No commentary found for the provided ID(s).");

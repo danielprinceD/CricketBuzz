@@ -144,6 +144,9 @@ public class PlayingXIDAO {
 
             for (PlayingXIVO model : playing11List) {
                 
+            	model.setFixtureId(Integer.parseInt(fixtureId));
+            	model.setTeamId(Integer.parseInt(teamId));
+            	
             	if(!canUpdatePlayer(Integer.parseInt(fixtureId) , Integer.parseInt(teamId) , model.getPlayerId()))
             		throw new SQLException("Updating a player only applicable if players in playing 11");
             	
@@ -178,7 +181,7 @@ public class PlayingXIDAO {
 
             int[] rowsAffected = pstmt.executeBatch();
             if (rowsAffected.length > 0) {
-            	System.out.println("Player data updated successfully.");
+            	
             } else {
                 System.out.println("Failed to update player data.");
             }
@@ -226,7 +229,6 @@ public class PlayingXIDAO {
 
 	        JSONArray playing11Array = new JSONArray();
 	        
-	        
 	        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
 	             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
@@ -236,6 +238,7 @@ public class PlayingXIDAO {
 	            try (ResultSet rs = pstmt.executeQuery()) {
 	               
 	                while (rs.next()) {
+	                	
 	                    JSONObject playing11 = new JSONObject();
 	                    playing11.put("player_id", rs.getInt("player_id"));
 	                    playing11.put("role", rs.getString("role"));
@@ -252,8 +255,6 @@ public class PlayingXIDAO {
 	                if (playing11Array.length() > 0) {
 	                    response.setContentType("application/json");
 	                    out.print(playing11Array.toString());
-	                    
-	                    PlayingXIRedisUtil.setPlayingXIByFixtureIdByTeamId(playing11Array, Integer.parseInt(fixtureId) , Integer.parseInt(teamId) );
 	                    
 	                } else {
 	                    Extra.sendError(response, out, "No records found for the provided fixture_id and team_id.");

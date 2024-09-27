@@ -10,7 +10,22 @@ public class CommentaryVO {
     private Integer bowlerId;
     private String dateTime;
     private Integer catcherId;
+    private Integer overCount;
+    private Integer ball;
+    
+    public int getOverCount() {
+    	return overCount;
+    }
+    public void setOverCount(int overCount) {
+    	this.overCount = overCount;
+    }
 
+    public int getBall() {
+    	return ball;
+    }
+    public void setBall(int ball) {
+    	this.ball = ball;
+    }
 
     public int getCommentaryId() {
         return commentaryId;

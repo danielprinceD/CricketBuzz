@@ -1,5 +1,7 @@
 package repository;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.rmi.ServerException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -9,6 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import model.*;
+import utils.TeamRedisUtil;
 import controller.*;
 
 public class TeamDAO {
@@ -21,9 +24,13 @@ public class TeamDAO {
     
     
     public TeamVO getTeamByID(int teamId) throws SQLException {
+    	
         String sql = "SELECT * FROM team WHERE team_id = ?";
-        TeamVO team = null;
+        TeamVO team = TeamRedisUtil.getOne(teamId);
 
+        if(team != null)
+        	return team;
+        
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
@@ -41,6 +48,9 @@ public class TeamDAO {
                 
                 List<Integer> players = getPlayersForTeam(team.getTeamId()); 
                 team.setTeamPlayers(players);
+                
+                if(TeamRedisUtil.isCached())
+                	TeamRedisUtil.setTeamById(team , teamId);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -51,9 +61,12 @@ public class TeamDAO {
 
     
     public List<TeamVO> getTeams() throws SQLException {
-        List<TeamVO> teams = new ArrayList<>();
+        List<TeamVO> teams = TeamRedisUtil.getAll();
         String sql = "SELECT * FROM team";
-
+        
+        if(teams.size() > 0)
+        	return teams;
+        
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -70,7 +83,8 @@ public class TeamDAO {
                 teams.add(team);
             }
         }
-
+        if(!teams.isEmpty())
+        	TeamRedisUtil.setAllTeams(teams);
         return teams;
     }
 
@@ -223,8 +237,70 @@ public class TeamDAO {
         }
     }
     
+    public void addTeams(HttpServletRequest request , HttpServletResponse response ,List<TeamVO> teams) throws ServerException , IOException {
+		
+    	PrintWriter out = response.getWriter();
+    	for (TeamVO teamVO : teams) {
+		        	
+		        	if(teamVO == null)
+		        	{
+		        		Extra.sendError(response, out, "Not a Valid JSON Body");
+		        		return;
+		        	}
+		        	
+		            Set<Integer> playerSet = new HashSet<>();
+		            
+		            
+		            
+		            if (!validatePlayers(teamVO, playerSet, response, out)) return;
+		           
+		            String sql =prepareSqlStatement(request, teamVO, response, out);
+		            
+		            if (sql == null) return;
+		
+		            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+		                 PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+		            	
+		                conn.setAutoCommit(false);
+		                setPreparedStatementValues(pstmt, teamVO);
+		
+		                int rowsAffected = pstmt.executeUpdate();
+		                int teamId = teamVO.getTeamId();
+		          
+		                if (teamId < 0 && request.getMethod().equalsIgnoreCase("POST")) {
+		                    teamId = getGeneratedTeamId(pstmt);
+		                    teamVO.setTeamId(teamId);
+		                }
+		
+		                if (teamId > 0 ){
+		                    addPlayersToTeam(conn, playerSet, teamId);
+		                }
+		
+		                if (rowsAffected > 0) {
+		                    conn.commit();
+		                    
+		                    
+		                    
+		                    Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
+		                } else {
+		                    conn.rollback();
+		                    Extra.sendError(response, out, "Failed to insert/update team");
+		                }
+		
+		            } catch (SQLException e) {
+		                Extra.sendError(response, out, e.getMessage());
+		                e.printStackTrace();
+		            }
+		        }  
+    	
+    	if(TeamRedisUtil.isCached())
+        	TeamRedisUtil.setAllTeams(teams);
+    }
+    
+    
     private boolean isAlreadyInTeam(int playerId, int teamId, Connection conn) {
-        String query = "SELECT COUNT(*) FROM team_player WHERE player_id = ? AND team_id = ?";
+        
+    	String query = "SELECT COUNT(*) FROM team_player WHERE player_id = ? AND team_id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setInt(1, playerId);
             pstmt.setInt(2, teamId);
@@ -380,6 +456,10 @@ public class TeamDAO {
             int rowsAffected = preparedStatement.executeUpdate();
             
             if (rowsAffected > 0) {
+            	
+            	if(TeamRedisUtil.isCached())
+            		TeamRedisUtil.deleteOne(Integer.parseInt(teamId));
+            	
                 out.println("Team has been removed");
             } else {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

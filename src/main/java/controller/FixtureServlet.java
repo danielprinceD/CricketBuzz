@@ -8,9 +8,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.json.JSONArray;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import repository.*;
+import utils.FixtureRedisUtil;
 import model.*;
 
 public class FixtureServlet extends HttpServlet {
@@ -40,6 +44,8 @@ public class FixtureServlet extends HttpServlet {
         Integer tourId = (tourIdParam != null && !tourIdParam.isEmpty()) ? Integer.parseInt(tourIdParam) : null;
         Integer fixtureId = (fixtureIdParam != null && !fixtureIdParam.isEmpty()) ? Integer.parseInt(fixtureIdParam) : null;
 
+        
+        
         try {
         	
 			List<FixtureVO> fixtureVO = fixtureDAO.getFixturesByTour(tourId, fixtureId);
@@ -56,6 +62,7 @@ public class FixtureServlet extends HttpServlet {
 			e.printStackTrace();
 		}
         catch (Exception e) {
+        	e.printStackTrace();
         	Extra.sendError(response, out, e.getMessage());
 		}
     }

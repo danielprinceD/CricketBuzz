@@ -19,6 +19,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import controller.*;
+import utils.OverSummaryRedisUtil;
 
 public class OverSummaryDAO {
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
@@ -166,10 +167,20 @@ public class OverSummaryDAO {
 	    List<Object> parameters = new ArrayList<>();
 
 	    String fixtureIdParam = request.getParameter("fixture_id");
+	   
 
 	    if (fixtureIdParam != null) {
 	        sql.append(" AND fixture_id = ?");
 	        parameters.add(Integer.parseInt(fixtureIdParam));
+	    }
+	    
+	    
+	    JSONArray jsonArray = OverSummaryRedisUtil.getByFixtureID(Integer.parseInt(fixtureIdParam));
+	    
+	    if(!jsonArray.isEmpty())
+	    {
+	    	response.getWriter().print(jsonArray);
+	    	return;
 	    }
 
 	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -180,7 +191,6 @@ public class OverSummaryDAO {
 	        }
 
 	        ResultSet rs = pstmt.executeQuery();
-	        JSONArray jsonArray = new JSONArray();
 
 	        while (rs.next()) {
 	            JSONObject jsonObject = new JSONObject();
@@ -191,7 +201,9 @@ public class OverSummaryDAO {
 
 	            jsonArray.put(jsonObject);
 	        }
-
+	        
+	        OverSummaryRedisUtil.setOverSummaryByFixtureId(Integer.parseInt(fixtureIdParam), jsonArray);
+	        
 	        response.setContentType("application/json");
 	        response.setCharacterEncoding("UTF-8");
 	        response.getWriter().print(jsonArray.toString());
@@ -278,6 +290,10 @@ public class OverSummaryDAO {
 
             if (insertedRecords > 0) {
             	conn.commit();
+            	
+            	if(OverSummaryRedisUtil.isCached(fixtureId))
+            		OverSummaryRedisUtil.setOverSummaryByFixtureId(fixtureId, jsonArray);
+            	
                 Extra.sendError(response, response.getWriter(), insertedRecords + " record(s) created successfully.");
             } else {
             	conn.rollback();

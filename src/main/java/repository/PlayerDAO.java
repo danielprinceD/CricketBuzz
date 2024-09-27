@@ -1,6 +1,7 @@
 package repository;
 
 import model.*;
+import utils.PlayerRedisUtil;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -14,7 +15,12 @@ public class PlayerDAO {
     private AddressDAO addressDAO = new AddressDAO();
 
     public List<PlayerVO> getAllPlayers() throws SQLException {
-        List<PlayerVO> players = new ArrayList<>();
+    	
+        List<PlayerVO> players = PlayerRedisUtil.getPlayers();
+        
+        if(players.size() > 0)
+        	return players;
+        
         String sql = "SELECT P.id, P.name, P.role, A.address_id, A.door_num, A.street, A.city, A.state, A.nationality, P.gender, P.rating, P.batting_style, P.bowling_style FROM player AS P JOIN address AS A ON P.address_id = A.address_id";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -43,7 +49,11 @@ public class PlayerDAO {
                 player.setAddress(address);
                 players.add(player);
             }
+            
         }
+        if(players.size() > 0)
+        	PlayerRedisUtil.setPlayers(players);
+        
         return players;
     }
 
@@ -63,8 +73,18 @@ public class PlayerDAO {
 	                pstmt.setDouble(5, player.getRating());
 	                pstmt.setString(6, player.getBattingStyle());
 	                pstmt.setString(7, player.getBowlingStyle());
-	                
+	               
 	                int rowsAffected = pstmt.executeUpdate();
+	                
+	                try(ResultSet generatedKey = pstmt.getGeneratedKeys()){
+	                	
+	                	if(generatedKey.next())
+	                	{
+	                		int playerId = generatedKey.getInt(1);
+	                		if(PlayerRedisUtil.isCached())
+	    	                	PlayerRedisUtil.setPlayerById(player, playerId);
+	                	}
+	                }
 	                return rowsAffected > 0;
 	            }
 	        }
@@ -118,6 +138,9 @@ public class PlayerDAO {
 	                pstmt.setInt(8, player.getId());
 	                
 	                int rowsAffected = pstmt.executeUpdate();
+	                if(rowsAffected > 0 && PlayerRedisUtil.isCached())
+	                	PlayerRedisUtil.setPlayerById(player, player.getId());
+	                	
 	                return rowsAffected > 0;
 	            }
 	        }
@@ -146,14 +169,23 @@ public class PlayerDAO {
 	             
 	            pstmt.setInt(1, playerId);
 	            int affectedRows = pstmt.executeUpdate();
+	            if(PlayerRedisUtil.isCached())
+	            	PlayerRedisUtil.deletePlayerById(playerId);
+	            	
+	            	
 	            return (affectedRows > 0);
 	        }
 	    }
 
     
     public PlayerVO getPlayerById(int playerId) throws SQLException {
-        PlayerVO player = null;
-        String sql = "SELECT P.id, P.name, P.role, A.address_id, A.door_num, A.street, A.city, A.state, A.nationality, P.gender, P.rating, P.batting_style, P.bowling_style FROM player AS P JOIN address AS A ON P.address_id = A.address_id WHERE P.id = ?";
+        
+    	PlayerVO player = PlayerRedisUtil.getPlayerById(playerId);
+    	
+    	if(player != null)
+    		return player;
+        
+    	String sql = "SELECT P.id, P.name, P.role, A.address_id, A.door_num, A.street, A.city, A.state, A.nationality, P.gender, P.rating, P.batting_style, P.bowling_style FROM player AS P JOIN address AS A ON P.address_id = A.address_id WHERE P.id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -184,6 +216,9 @@ public class PlayerDAO {
 
             }
         }
+        if(player != null && PlayerRedisUtil.isCached() )
+        	PlayerRedisUtil.setPlayerById(player , playerId);
+        	
         return player;
     }
 }
