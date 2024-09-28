@@ -79,6 +79,8 @@ public class CommentaryRedisUtil {
 	            }
 	        }
 	        
+	        
+	        
 	        existingCommentaries.addAll(newCommentaries);
 	        
 	        for (CommentaryVO commentary : existingCommentaries) {

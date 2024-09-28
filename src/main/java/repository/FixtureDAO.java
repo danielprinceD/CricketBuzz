@@ -3,22 +3,22 @@ package repository;
 import java.io.PrintWriter;
 import java.sql.*;
 import java.util.*;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.json.JSONArray;
 import org.json.JSONObject;
-
 import model.FixtureVO;
+import model.PlayingXIVO;
+import model.TeamVO;
+import model.VenueVO;
 import utils.FixtureRedisUtil;
 import controller.*;
 
 public class FixtureDAO {
 	
-	private static final String BASE_SELECT_QUERY = "SELECT round, status, fixture_id, tour_id, team1_id, team2_id, winner_id, venue_id, match_date FROM fixture";
-
+	private static final String FIXTURE_BY_ID_QUERY = "SELECT f.round , f.tour_id , f.fixture_id, f.team1_id, t1.name AS team1_name, f.team2_id, t2.name AS team2_name,  v.venue_id, v.stadium, v.location, v.pitch_condition, v.description, v.capacity, v.curator, f.winner_id, winner_team.name AS winner_name, md.toss_win AS toss_win_team_id, toss_team.name AS toss_win_team_name, md.toss_win_decision, md.man_of_the_match AS man_of_the_match_id, mom.name AS man_of_the_match_name, f.status FROM fixture f LEFT JOIN team t1 ON f.team1_id = t1.team_id LEFT JOIN team t2 ON f.team2_id = t2.team_id LEFT JOIN team winner_team ON f.winner_id = winner_team.team_id LEFT JOIN match_details md ON f.fixture_id = md.fixture_id LEFT JOIN player mom ON md.man_of_the_match = mom.id LEFT JOIN team toss_team ON md.toss_win = toss_team.team_id LEFT JOIN venue v ON f.venue_id = v.venue_id WHERE f.fixture_id = ?";
+	private static final String FIXTURE_ID_TEAM_ID = "SELECT t.team_id, t.name AS team_name, t.category, p11.player_id, p.name AS player_name, p11.role, p11.runs, p11.balls_faced, p11.fours, p11.sixes, p11.fifties, p11.hundreds, p11.wickets_taken FROM team t JOIN playing_11 p11 ON t.team_id = p11.team_id JOIN player p ON p11.player_id = p.id WHERE t.team_id = ? AND p11.fixture_id = ?";
+	
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
     private static final String USER = "root";
     private static final String PASS = "";
@@ -384,136 +384,142 @@ public class FixtureDAO {
     }
 
     
-    protected void getFixtureByTour(HttpServletResponse response, PrintWriter out, HttpServletRequest request) {
-        String tourId = request.getParameter("tour_id");
-        String fixtureId = request.getParameter("fixture_id");
-
-        StringBuilder sql = new StringBuilder("SELECT round , status, fixture_id, tour_id, team1_id, team2_id, winner_id, venue_id, match_date FROM fixture");
+    public List<FixtureVO> getFixtureByTournamentId(Integer tourId) throws SQLException {
         
-      
-        boolean hasConditions = false;
-        List<Object> params = new ArrayList<>();
-
-        if (tourId != null && !tourId.isEmpty()) {
-            sql.append(" WHERE tour_id = ?");
-            params.add(Integer.parseInt(tourId));
-            hasConditions = true; 
-        }
+    	
+        StringBuilder sql = new StringBuilder("SELECT fixture_id, status , round ,team1_id, team2_id, winner_id , match_date FROM fixture WHERE tour_id = ?");
         
-
-        if (fixtureId != null && !fixtureId.isEmpty()) {
-            sql.append(hasConditions ? " AND fixture_id = ?" : " WHERE fixture_id = ?");
-            params.add(Integer.parseInt(fixtureId));
-        }
-
-        JSONArray fixtures = new JSONArray();
-
+        List<FixtureVO> fixtures = new ArrayList<>();
+        
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
+            pstmt.setInt(1, tourId);
 
             try (ResultSet rs = pstmt.executeQuery()) {
+            	
                 while (rs.next()) {
-                    JSONObject fixture = new JSONObject();
-                    fixture.put("round", rs.getObject("round"));
-                    fixture.put("status", rs.getString("status"));
-                    fixture.put("fixture_id", rs.getInt("fixture_id"));
-                    fixture.put("tour_id", rs.getInt("tour_id"));
-                    fixture.put("team1_id", rs.getInt("team1_id"));
-                    fixture.put("team2_id", rs.getInt("team2_id"));
-                    fixture.put("winner_id", rs.getObject("winner_id") != null ? rs.getInt("winner_id") : JSONObject.NULL);
-                    fixture.put("venue_id", rs.getInt("venue_id"));
-                    fixture.put("match_date", rs.getString("match_date"));
-
-                    fixtures.put(fixture);
+                	FixtureVO fixture = new FixtureVO();
+                    fixture.setRound( rs.getString("round") );
+                    fixture.setStatus(rs.getString("status"));
+                    fixture.setFixtureId( rs.getInt("fixture_id"));
+                    fixture.setTeam1Id(rs.getInt("team1_id"));
+                    fixture.setTeam2Id(rs.getInt("team2_id"));
+                    
+                    if(rs.getObject("winner_id") !=  null)
+                    fixture.setWinnerId( rs.getInt("winner_id"));
+                    	
+                   
+                    fixture.setMatchDate(rs.getString("match_date"));
+                    fixtures.add(fixture);
                 }
             }
-
-            if (fixtures.length() > 0) {
-                response.setContentType("application/json");
-                out.print(fixtures.toString());
-            } else {
-                Extra.sendError(response, out, "No fixtures found for the provided tour ID " + tourId);
-            }
-
-        } catch (NumberFormatException e) {
-            Extra.sendError(response, out, "Invalid parameter format: " + e.getMessage());
-        } catch (SQLException e) {
-            Extra.sendError(response, out, "Database error: " + e.getMessage());
-            e.printStackTrace();
+            return fixtures;
         }
     }
     
+    
+    public TeamVO getTeamByIdTournamentId(int fixtureId , int teamId) throws SQLException {
+    	
+    	
+    	try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+                PreparedStatement stmt = conn.prepareStatement(FIXTURE_ID_TEAM_ID)) {
+    		TeamVO team = new TeamVO();
+
+               stmt.setInt(1, teamId);
+               stmt.setInt(2, fixtureId);
+               ResultSet rs = stmt.executeQuery();
+
+               
+               List<PlayingXIVO> playing11s = new ArrayList<>();
+
+               while (rs.next()) {
+
+            	   team.setTeamId(rs.getInt("team_id"));
+                   team.setName( rs.getString("team_name"));
+                   team.setCategory(rs.getString("category"));
+                   
+            	   
+            	   PlayingXIVO playing11 = new PlayingXIVO();
+                   
+            	   playing11.setPlayerId(rs.getInt("player_id"));
+                   playing11.setName( rs.getString("player_name"));
+                   playing11.setRole( rs.getString("role"));
+                   playing11.setRuns( rs.getInt("runs"));
+                   playing11.setBallsFaced(rs.getInt("balls_faced"));
+                   playing11.setFours(rs.getInt("fours"));
+                   playing11.setSixes(rs.getInt("sixes"));
+                   playing11.setFifties(rs.getInt("fifties"));
+                   playing11.setHundreds(rs.getInt("hundreds"));
+                   playing11.setWicketsTaken(rs.getInt("wickets_taken"));
+                   
+                   playing11s.add(playing11);
+               }
+               if(playing11s.size() > 0)
+            	   team.setPlaying11s(playing11s);
+               
+               
+               return team;
+    	}
+    }
+    
 	
-    public List<FixtureVO> getFixturesByTour(Integer tourId, Integer fixtureId) throws SQLException {
+    public FixtureVO getFixtureById(Integer fixtureId) throws SQLException {
         
-    	StringBuilder sql = new StringBuilder(BASE_SELECT_QUERY);
-        List<Object> params = new ArrayList<>();
-        
-        boolean hasConditions = false;
-
-        if (tourId != null) {
-            sql.append(" WHERE tour_id = ?");
-            params.add(tourId);
-            hasConditions = true;
-        }
-
-        if (fixtureId != null) {
-            sql.append( hasConditions ? " AND fixture_id = ?" : " WHERE fixture_id = ?");
-            params.add(fixtureId);
-        }
-        List<FixtureVO> fixtures = new ArrayList<>();
-        
-        if(tourId != null)
-        {
-        	fixtures = FixtureRedisUtil.getFixturesByTourId(tourId);
-        	if(fixtures.size() > 0)
-        		return fixtures;
-        }
-        
-        if(fixtureId != null)
-        {
-        	fixtures = FixtureRedisUtil.getFixtureById(fixtureId);
-        	if(fixtures.size() > 0)
-        		return fixtures;
-        }
-        
-        
+    	StringBuilder sql = new StringBuilder(FIXTURE_BY_ID_QUERY);
+        FixtureVO fixture = new FixtureVO();
+    	
         try (
         		Connection conn = DriverManager.getConnection(DB_URL , USER , PASS);
         		PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
+            	
+        	pstmt.setInt(1, fixtureId);
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    FixtureVO fixture = new FixtureVO();
+            	
+                if (rs.next()) {
                     fixture.setRound(rs.getString("round"));
                     fixture.setStatus(rs.getString("status"));
                     fixture.setFixtureId(rs.getInt("fixture_id"));
                     fixture.setTourId(rs.getInt("tour_id"));
                     fixture.setTeam1Id(rs.getInt("team1_id"));
+                    fixture.setTeam1Name(rs.getString("team1_name"));
+                    fixture.setTeam2Name(rs.getString("team2_name"));
                     fixture.setTeam2Id(rs.getInt("team2_id"));
-                    fixture.setWinnerId(rs.getObject("winner_id") != null ? rs.getInt("winner_id") : -1);
-                    fixture.setVenueId(rs.getInt("venue_id"));
-                    fixture.setMatchDate(rs.getString("match_date"));
                     
-                    fixtures.add(fixture);
+                    if(rs.getObject("winner_id") != null)
+                    {                    	
+	                    fixture.setWinnerId(rs.getInt("winner_id"));
+	                    fixture.setWinnerTeamName(rs.getString("winner_name"));
+	                    fixture.setManOfTheMatch(rs.getInt("man_of_the_match_id"));
+	                    fixture.setManOfTheMatchPlayerName(rs.getString("man_of_the_match_name"));
+                    }
+                    
+                    VenueVO venue = new VenueVO();
+                    
+                    venue.setVenueId(rs.getInt("venue_id"));
+                    venue.setStadium(rs.getString("stadium"));
+                    venue.setLocation(rs.getString("location"));
+                    venue.setPitchCondition(rs.getString("pitch_condition"));
+                    venue.setDescription(rs.getString("description"));
+                    venue.setCapacity(rs.getInt("capacity"));
+                    venue.setCurator(rs.getString("curator"));
+                    
+                    fixture.setVenue(venue);
+                    
+                    if(rs.getObject("toss_win_team_id") != null)
+                    {
+                    	fixture.setTossWinnerId(rs.getInt("toss_win_team_id"));
+                    	fixture.setTossWinnerTeamName(rs.getString("toss_win_team_name"));                    	
+                    	fixture.setTossWinnerDecision(rs.getString("toss_win_decision"));
+                    }
+                    
+                    
+                    return fixture;
                 }
                 
-                if(fixtures.size() > 0 && tourId != null)
-                	FixtureRedisUtil.setFixtureByTourID(fixtures, tourId);
+                return null;
                 
-                if(fixtures.size() > 0 && fixtureId != null)
-                {
-                	
-                }
-                
-                return fixtures;
             }
         }
     }

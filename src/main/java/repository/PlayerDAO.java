@@ -21,7 +21,7 @@ public class PlayerDAO {
         if(players.size() > 0)
         	return players;
         
-        String sql = "SELECT P.id, P.name, P.role, A.address_id, A.door_num, A.street, A.city, A.state, A.nationality, P.gender, P.rating, P.batting_style, P.bowling_style FROM player AS P JOIN address AS A ON P.address_id = A.address_id";
+        String sql = "SELECT id, name, role , gender, rating  FROM player";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -35,18 +35,6 @@ public class PlayerDAO {
                 player.setRole(rs.getString("role"));
                 player.setGender(rs.getString("gender"));
                 player.setRating(rs.getDouble("rating"));
-                player.setBattingStyle(rs.getString("batting_style"));
-                player.setBowlingStyle(rs.getString("bowling_style"));
-
-                AddressVO address = new AddressVO();
-                address.setAddressId(rs.getInt("address_id"));
-                address.setDoorNum(rs.getString("door_num"));
-                address.setStreet(rs.getString("street"));
-                address.setCity(rs.getString("city"));
-                address.setState(rs.getString("state"));
-                address.setNationality(rs.getString("nationality"));
-
-                player.setAddress(address);
                 players.add(player);
             }
             
@@ -91,7 +79,7 @@ public class PlayerDAO {
 	        return false;
 	    }
 	
-   	 public int getOldAddressId(int playerId) throws SQLException {
+   	 private int getOldAddressId(int playerId) throws SQLException {
    	    String addressSql = "SELECT address_id FROM player WHERE id = ?";
    	    
    	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);

@@ -6,18 +6,27 @@ import com.google.gson.Gson;
 
 public class PlayingXIVO {
     
-    private int fixture_id = -1;
-    private int player_id = -1;
+    private Integer fixture_id ;
+    private Integer player_id;
     private String role;
-    private int runs;
-    private int balls_faced;
-    private int fours;
-    private int sixes;
-    private int fifties;
-    private int hundreds;
-    private int wickets_taken;
-    private Integer team_id = -1; 
+    private Integer runs;
+    private Integer balls_faced;
+    private Integer fours;
+    private Integer sixes;
+    private Integer fifties;
+    private Integer hundreds;
+    private Integer wickets_taken;
+    private Integer team_id;
+    private String playerName;
     
+    public void setName(String name)
+    {
+    	this.playerName = name;
+    }
+    
+    public String getName() {
+    	return this.playerName;
+    }
 
     public int getFixtureId() {
         return fixture_id;

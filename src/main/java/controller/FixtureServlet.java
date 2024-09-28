@@ -4,22 +4,28 @@ import java.io.PrintWriter;
 import java.io.BufferedReader;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.json.JSONArray;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import repository.*;
-import utils.FixtureRedisUtil;
+import utils.PathMatcherUtil;
 import model.*;
 
 public class FixtureServlet extends HttpServlet {
+	
 	private static final long serialVersionUID = 1L;
-    FixtureDAO fixtureDAO;
+    private static FixtureDAO fixtureDAO;
+    
+    private final String FIXTURE_ID = "/([0-9]+)";
+    private final String FIXTURE_ID_TEAM_ID_PLAYING_11 = "/([0-9]+)/teams/([0-9]+)/playing11s";
+    
+    private final Pattern FIXTURE_ID_COMPILE = Pattern.compile(FIXTURE_ID);
+    private final Pattern FIXTURE_ID_TEAM_ID_PLAYING_11_COMPILE = Pattern.compile(FIXTURE_ID_TEAM_ID_PLAYING_11);
     
     @Override
     public void init() {
@@ -32,34 +38,47 @@ public class FixtureServlet extends HttpServlet {
         
         response.setContentType("application/json");
         PrintWriter out = response.getWriter();
-
-        String tourIdParam = request.getParameter("tourId");
-        String fixtureIdParam = request.getParameter("fixtureId");
-
-        if (tourIdParam == null && fixtureIdParam == null) {
-            Extra.sendError(response, out, "Tournament ID / Fixture ID is required");
-            return;
-        }
-
-        Integer tourId = (tourIdParam != null && !tourIdParam.isEmpty()) ? Integer.parseInt(tourIdParam) : null;
-        Integer fixtureId = (fixtureIdParam != null && !fixtureIdParam.isEmpty()) ? Integer.parseInt(fixtureIdParam) : null;
-
-        
+        String pathInfo = request.getPathInfo();
         
         try {
         	
-			List<FixtureVO> fixtureVO = fixtureDAO.getFixturesByTour(tourId, fixtureId);
-			if(fixtureVO == null)
+			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID))
 			{
-				Extra.sendError(response, out, "No Data");
+				Matcher matcher = FIXTURE_ID_COMPILE.matcher(pathInfo);
+				if(matcher.find())
+				{
+					Integer fixtureId = Integer.parseInt(matcher.group(1));
+					FixtureVO fixture = fixtureDAO.getFixtureById(fixtureId);
+					
+					if(fixture != null)
+						out.print(new Gson().toJson( fixture) );
+					else throw new Exception("No Data Found");
+				}
 				return;
 			}
 			
-			out.print(new Gson().toJson(fixtureVO));
+			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID_TEAM_ID_PLAYING_11))
+			{
+				Matcher matcher = FIXTURE_ID_TEAM_ID_PLAYING_11_COMPILE.matcher(pathInfo);
+				if(matcher.find())
+				{
+					Integer fixtureId = Integer.parseInt(matcher.group(1));
+					Integer teamId = Integer.parseInt(matcher.group(2));
+					
+					TeamVO team = fixtureDAO.getTeamByIdTournamentId(fixtureId, teamId);
+					String teamJson = new Gson().toJson(team);
+					
+					if(teamJson.equalsIgnoreCase("{}"))
+						throw new Exception("No Data Found");
+					
+					out.print(teamJson);
+					
+				}
+				return;
+			}
 			
-		} catch (SQLException e) {
-			Extra.sendError(response, out, e.getMessage() );
-			e.printStackTrace();
+			Extra.sendError(response, out, "Enter Valid Path");
+			
 		}
         catch (Exception e) {
         	e.printStackTrace();

@@ -27,7 +27,7 @@ public class TournamentDAO {
     private static String ADD_TEAM_TO_TOUR = "SELECT team_id FROM tournament_team WHERE tour_id = ?";
     private static String GET_ALL_TOURNAMENT = "SELECT * FROM tournament";
     private static String GET_TOURNAMENT_BY_ID = "SELECT * FROM tournament WHERE tour_id = ?";
-    private static String TEAMS_BY_TOURNAMENT_ID = "SELECT T.team_id, TT.points, TT.net_run_rate FROM tournament_team TT JOIN team T ON TT.team_id = T.team_id WHERE TT.tour_id = ?";
+    private static String TEAMS_BY_TOURNAMENT_ID = "SELECT T.team_id,T.name , TT.points, TT.net_run_rate FROM tournament_team TT JOIN team T ON TT.team_id = T.team_id WHERE TT.tour_id = ?";
     private static String ADD_TOURNAMENT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season, status) VALUES (?, ?, ?, ?, ?, ?)";
     private static String INSERT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season , status) VALUES (?, ?, ?, ?, ? , ? )";
     private static String UPDATE_SQL = "UPDATE tournament SET name = ?, start_date = ?, end_date = ?, match_category = ?, season = ? , status = ? WHERE tour_id = ?";
@@ -38,12 +38,8 @@ public class TournamentDAO {
     private static String DELETE_TOURTEAM_BY_TEAMID = "DELETE FROM tournament_team WHERE tour_id = ? AND team_id = ?";
     
     public List<TournamentVO> getAllTournaments() throws SQLException {
-
     	
-        List<TournamentVO> tournaments = TournamentRedisUtil.getTournaments();;
-        
-       if(!tournaments.isEmpty())
-    	   return tournaments;
+        List<TournamentVO> tournaments = new ArrayList<>();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement stmt = conn.prepareStatement(GET_ALL_TOURNAMENT);
@@ -53,27 +49,17 @@ public class TournamentDAO {
                 TournamentVO tournament = new TournamentVO();
                 tournament.setTourId(rs.getInt("tour_id"));
                 tournament.setName(rs.getString("name"));
-                tournament.setStartDate(rs.getString("start_date"));
-                tournament.setEndDate(rs.getString("end_date"));
                 tournament.setMatchCategory(rs.getString("match_category"));
-                tournament.setSeason(rs.getInt("season"));
                 tournament.setStatus(rs.getString("status"));
-
-                List<TournamentTeamVO> teams = getTeamsByTournamentId(tournament.getTourId());
-                tournament.setParticipatedTeams(teams);
                 tournaments.add(tournament);
             }
-            TournamentRedisUtil.setTournaments(tournaments);
         }
         return tournaments;
     }
 
     public TournamentVO getTournamentById(int tourId) throws SQLException {
         
-    	TournamentVO tournament = TournamentRedisUtil.getTournamentById(tourId);
-    	
-    	if(tournament != null)
-    		return tournament;
+    	TournamentVO tournament = null;
     
     	
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -91,17 +77,14 @@ public class TournamentDAO {
                 tournament.setMatchCategory(rs.getString("match_category"));
                 tournament.setSeason(rs.getInt("season"));
                 tournament.setStatus(rs.getString("status"));
-
-                List<TournamentTeamVO> teams = getTeamsByTournamentId(tournament.getTourId());
-                tournament.setParticipatedTeams(teams);
-                
-                TournamentRedisUtil.setTournamentsById(tournament , tourId);
+                List<TournamentTeamVO> teams = getTeamsByTournamentId(tournament.getTourId());                
+                tournament.setTeamCount(teams.size());
             }
         }
         return tournament;
     }
 
-    private List<TournamentTeamVO> getTeamsByTournamentId(int tourId) throws SQLException {
+    public List<TournamentTeamVO> getTeamsByTournamentId(int tourId) throws SQLException {
         
     	List<TournamentTeamVO> teams = new ArrayList<>();
     	
@@ -114,6 +97,7 @@ public class TournamentDAO {
             while (rs.next()) {
             	TournamentTeamVO team = new TournamentTeamVO();
                 team.setTeamId(rs.getInt("team_id"));
+                team.setName(rs.getString("name"));
                 team.setPoints(rs.getInt("points"));
                 team.setNetRunRate(rs.getDouble("net_run_rate"));
                 teams.add(team);

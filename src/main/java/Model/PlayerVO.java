@@ -6,7 +6,7 @@ public class PlayerVO {
     private String role;
     private AddressVO address;
     private String gender;
-    private double rating;
+    private Double rating;
     private String battingStyle;
     private String bowlingStyle;
 

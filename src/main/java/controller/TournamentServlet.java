@@ -2,11 +2,15 @@ package controller;
 
 import java.io.BufferedReader;
 import com.google.gson.reflect.TypeToken;
+
+import jakarta.ws.rs.core.NewCookie;
 import repository.*;
+import utils.PathMatcherUtil;
 import utils.TournamentRedisUtil;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.PathMatcher;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,6 +18,9 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -30,10 +37,20 @@ public class TournamentServlet extends HttpServlet {
     
     private TournamentDAO tournamentDAO;
     
+    private final String TOURNAMENT_ID = "/([0-9]+)";
+    private final String TOURNAMENT_ID_TEAMS = "/([0-9]+)/teams";
+    private final String TOURNAMENT_ID_FIXTURES = "/([0-9]+)/fixtures";
+    
+    private final Pattern TournamentCompile = Pattern.compile(TOURNAMENT_ID);
+    private final Pattern TournamentIdTeams = Pattern.compile(TOURNAMENT_ID_TEAMS);
+    private final Pattern TournamentIdFixtures = Pattern.compile(TOURNAMENT_ID_FIXTURES);
+    
     @Override
     public void init() {
     	tournamentDAO = new TournamentDAO();
     }
+    
+    
     
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -45,28 +62,77 @@ public class TournamentServlet extends HttpServlet {
         try {
             String pathInfo = request.getPathInfo();
             
-            if (pathInfo == null || pathInfo.equals("/")) {
+            if (pathInfo == null){
+            	
                 List<TournamentVO> tournaments  = tournamentDAO.getAllTournaments();
                 
                 out.print(new Gson().toJson(tournaments));
-           
-            } else {
-            	
-                int tourId = Integer.parseInt(pathInfo.substring(1));
-                TournamentVO tournament = tournamentDAO.getTournamentById(tourId);
-                
-
-                if (tournament != null) {
-                    out.print(new Gson().toJson(tournament));
-                } else {
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                    out.print("{ \"error\": \"Tournament not found\" }");
-                }
+                return;
+            } 
+            
+            
+            
+            if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID))
+            {
+            	Matcher matcher = TournamentCompile.matcher(pathInfo);
+            	if(matcher.find())
+            	{
+            		Integer tourId = Integer.parseInt(matcher.group(1));
+            		TournamentVO tournament = tournamentDAO.getTournamentById(tourId);
+            		if (tournament != null) {
+                        out.print(new Gson().toJson(tournament));
+                    } else {
+                        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                        out.print("{ \"error\": \"Tournament not found\" }");
+                    }
+            	}
+            	return;
             }
-        } catch (NumberFormatException | SQLException e) {
+            
+            
+            if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID_TEAMS))
+            {
+            	Matcher matcher = TournamentIdTeams.matcher(pathInfo);
+            	if(matcher.find())
+            	{
+            		Integer tourId = Integer.parseInt(matcher.group(1));
+            		
+            		List<TournamentTeamVO> tournaments = tournamentDAO.getTeamsByTournamentId(tourId);
+            		if(tournaments.size() > 0)
+            			out.print(new Gson().toJson(tournaments));
+            		else out.print("No data found");
+            		return;
+            	}
+            }
+             
+            if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID_FIXTURES))
+            {
+            	Matcher matcher = TournamentIdFixtures.matcher(pathInfo);
+            	if(matcher.find())
+            	{
+            		Integer tourId = Integer.parseInt(matcher.group(1));
+            		FixtureDAO fixturDao = new FixtureDAO();
+            		List<FixtureVO> fixtures = fixturDao.getFixtureByTournamentId(tourId);
+            		
+            		if(fixtures.size() > 0)
+            			out.print(new Gson().toJson(fixtures));
+            		else throw new Exception("No Data Found");
+            		
+            	}
+            	return;
+            }
+            
+            Extra.sendError(response, out, "Enter valid path");
+            return;
+                
+            
+        } catch (NumberFormatException | SQLException e ) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             out.print("{ \"error\": \"" + e.getMessage() + "\" }");
         }
+        catch (Exception e) {
+        	Extra.sendError(response, out, e.getMessage());
+		}
     }
     
     

@@ -7,14 +7,22 @@ import org.json.JSONObject;
 import com.google.gson.Gson;
 
 public class TournamentVO {
-    private int tourId = -1;
+    private int tourId;
     private String name;
     private String startDate;
     private String endDate;
     private String matchCategory;
-    private int season;
-    private String status = "INPROGRESS";
+    private Integer season;
+    private String status = "INPROGRESS" ;
     private List<TournamentTeamVO> participatedTeams;
+    private Integer teamCount;
+    
+    public void setTeamCount(Integer count) {
+    	this.teamCount = count;
+    }
+    public Integer getTeamCount() {
+    	return this.teamCount;
+    }
 
 	public boolean isValid() {
 	    	

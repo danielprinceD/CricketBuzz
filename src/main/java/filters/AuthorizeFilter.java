@@ -74,3 +74,25 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 
 
 }
+
+
+/*   <filter>
+			<filter-name>AuthorizeFilter</filter-name>
+			<filter-class>filters.AuthorizeFilter</filter-class>
+		</filter>
+		
+		<filter-mapping>
+			
+			<filter-name>AuthorizeFilter</filter-name>
+			<url-pattern>/tournaments/*</url-pattern>
+			<url-pattern>/teams/*</url-pattern>
+			<url-pattern>/fixtures/*</url-pattern>
+			<url-pattern>/players/*</url-pattern>
+			 <url-pattern>/playing-11s</url-pattern>
+			 <url-pattern>/over_summary</url-pattern>
+			 <url-pattern>/commentaries/*</url-pattern>
+			 <url-pattern>/match-details</url-pattern>
+			  <url-pattern>/user/logout</url-pattern>
+			 
+		
+		</filter-mapping>  */

@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import repository.*;
+import utils.PathMatcherUtil;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -14,6 +16,8 @@ import org.json.JSONObject;
 import model.*;
 import java.sql.*;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class PlayerServlet extends HttpServlet {
@@ -21,70 +25,51 @@ public class PlayerServlet extends HttpServlet {
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
 	private static final String USER = "root";
 	private static final String PASS = "";
+	PlayerDAO playerDAO = new PlayerDAO();
 	
-	protected void addData(JSONObject playerObject , ResultSet rs) {
-		
-		try {
-			
-		playerObject.put("id", rs.getInt("id"));
-        playerObject.put("name", rs.getString("name"));
-        playerObject.put("role", rs.getString("role"));
-        playerObject.put("address", rs.getString("address"));
-        playerObject.put("gender", rs.getString("gender"));
-        playerObject.put("rating", rs.getInt("rating"));
-        playerObject.put("batting_style", rs.getString("batting_style"));
-        playerObject.put("bowling_style", rs.getString("bowling_style"));
-        
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			
-		}
-		
-	}
+	private final String PLAYER_ID = "/([0-9]+)";
+	private final Pattern PLAYER_ID_COMPILE = Pattern.compile(PLAYER_ID);
+
 	
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-	    response.setContentType("application/json");
+	    
+		response.setContentType("application/json");
 	    PrintWriter out = response.getWriter();
-	    PlayerDAO playerDAO = new PlayerDAO();
 	    String pathinfo = request.getPathInfo();
 	    
-	    if(pathinfo == null)
-	    {
-	    	try {
-	    		String playerJSON = new Gson().toJson(playerDAO.getAllPlayers());
-	    		
-				out.println(playerJSON);
-				return;
-			} catch (Exception e) {
-				out.print(e.getMessage());
-				e.printStackTrace();
-			}
-	    }
-	    String[] pathArr = pathinfo == null ? new String[] {} : pathinfo.split("/");
-	    if(pathArr.length == 2)
-	    {
+	    	
 	    	
 	    	try {
-				PlayerVO player =  playerDAO.getPlayerById(Integer.parseInt(pathArr[1])) ;
+	    		
+	    		
+	    		if(pathinfo != null && PathMatcherUtil.matchesPattern(pathinfo, PLAYER_ID))
+	    		{
+	    			Matcher matcher = PLAYER_ID_COMPILE.matcher(pathinfo);
+	    			if(matcher.find())
+	    			{
+	    				Integer playerId = Integer.parseInt(matcher.group(1));
+	    				PlayerVO player =  playerDAO.getPlayerById(playerId) ;
+	    				if(player == null)
+	    				{
+	    					Extra.sendError(response, out, "No Player Found");
+	    				}
+	    				else {
+	    					
+	    				String playerJson = new Gson().toJson(player);
+	    				out.print(playerJson);
+	    				}
+	    				
+	    			}
+	    			return;
+	    		}
+	    		
 				
-				if(player == null)
-				{
-					Extra.sendError(response, out, "No Player Found");
-				}
-				else {
-					
-				String playerJson = new Gson().toJson(player);
-				out.print(playerJson);
-				}
-				return;
 				
 			} catch (NumberFormatException | SQLException e) {
 				out.print(e.getMessage());
 				e.printStackTrace();
 			}
-	    }
 	    
 	    Extra.sendError(response, out, "Enter a valid Path");
 	    

@@ -1,9 +1,18 @@
 package model;
 
 public class TournamentTeamVO {
-    private int teamId = -1;
-    private int points = 0;
-    private double netRunRate = 0.0;
+    private Integer teamId;
+    private Integer points;
+    private double netRunRate;
+    private String name;
+    
+    public String getName() {
+    	return this.name;
+    }
+    
+    public void setName(String name) {
+    	this.name = name;
+    }
 
     public int getTeamId() {
         return teamId;

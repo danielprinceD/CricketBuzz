@@ -2,16 +2,99 @@ package model;
 
 public class FixtureVO {
 	
-	private int fixtureId = -1;
-    private int tourId = -1;
-    private int team1Id = -1;
-    private int team2Id = -1;
-    private Integer winnerId = -1;
-    private int venueId = -1;
+	private Integer fixtureId;
+    private Integer tourId;
+    private Integer team1Id;
+    private Integer team2Id;
+    private Integer winnerId;
+    private Integer venueId;
     private String matchDate;
     private String round;
     private String status;
-
+    private VenueVO venue;
+    private String winnerTeamName;
+    private Integer tossWinnerId;
+    private String tossWinnerTeamName;
+    private String tossWinnerDecision;
+    private Integer manOfTheMatch;
+    private String manOfTheMatchPlayerName;
+    private String team1Name;
+    private String team2Name;
+    
+    public void setTeam1Name(String team1Name) {
+    	this.team1Name = team1Name;
+    }
+    public String getTeam1Name() {
+    	return team1Name;
+    }
+    
+    public void setTeam2Name(String team2Name) {
+    	this.team2Name = team2Name;
+    }
+    public String getTeam2Name() {
+    	return team2Name;
+    }
+    
+    public String getManOfTheMatchPlayerName() {
+    	return manOfTheMatchPlayerName;
+    }
+    
+    public void setManOfTheMatchPlayerName(String manOfTheMatchPlayerName) {
+    	this.manOfTheMatchPlayerName = manOfTheMatchPlayerName;
+    }
+    
+    
+    public Integer getManOfTheMatch() {
+    	return manOfTheMatch;
+    }
+    
+    public void setManOfTheMatch(Integer manOfTheMatch) {
+    	this.manOfTheMatch = manOfTheMatch;
+    }
+     
+    
+    public String getTossWinnerDecision() {
+    	return tossWinnerDecision;
+    }
+    
+    public void setTossWinnerDecision(String tossWinnerDecision) {
+    	this.tossWinnerDecision = tossWinnerDecision;
+    }
+    
+    
+    public String getTossWinnerTeamName() {
+    	return tossWinnerTeamName;
+    }
+    
+    public void setTossWinnerTeamName(String tossWinnerTeamName) {
+    	this.tossWinnerTeamName = tossWinnerTeamName;
+    }
+    
+    public String getWinnerTeamName() {
+    	return winnerTeamName;
+    }
+    
+    public void setWinnerTeamName(String winnerTeamName) {
+    	this.winnerTeamName = winnerTeamName;
+    }
+    
+    public Integer getTossWinnerId() {
+    	return tossWinnerId;
+    }
+    
+    public void setTossWinnerId(Integer tossWinnerId) {
+    	this.tossWinnerId = tossWinnerId;
+    }
+    
+    
+    public VenueVO getVenue() {
+    	return this.venue;
+    }
+    
+    public void setVenue(VenueVO venue) {
+    	this.venue = venue;
+    }
+    
     public String getStatus() {
         return status;
     }

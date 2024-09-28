@@ -3,13 +3,49 @@ package model;
 import java.util.List;
 
 public class TeamVO {
-    private int teamId = -1;
+	
+    private Integer teamId;
     private String name;
-    private int captainId = -1;
-    private int viceCaptainId = -1;
-    private int wicketKeeperId = -1;
+    private Integer captainId;
+    private Integer viceCaptainId;
+    private Integer wicketKeeperId;
     private String category;
-    private List<Integer> teamPlayers;
+    private String captainName;
+    private String viceCaptainName;
+    private List<PlayerVO> players;
+    private List<PlayingXIVO> playing11s;
+    
+    public List<PlayingXIVO> getPlaying11s(){
+    	return this.playing11s;
+    }
+    
+    public void setPlaying11s(List<PlayingXIVO> playing11s) {
+		this.playing11s = playing11s;
+	}
+    
+    public List<PlayerVO> getPlayers() {
+        return players;
+    }
+    
+    public void setPlayers(List<PlayerVO> players) {
+        this.players = players;
+    }
+    
+    public String getCaptainName() {
+        return captainName;
+    }
+
+    public void setCaptainName(String captainName) {
+        this.captainName = captainName;
+    }
+
+    public String getViceCaptainName() {
+        return viceCaptainName;
+    }
+
+    public void setViceCaptainName(String viceCaptainName) {
+        this.viceCaptainName = viceCaptainName;
+    }
 
     public int getTeamId() {
         return teamId;
@@ -58,12 +94,10 @@ public class TeamVO {
     public void setCategory(String category) {
         this.category = category;
     }
-
-    public List<Integer> getTeamPlayers() {
-        return teamPlayers;
+    
+    public boolean canPost() {
+    	
+    	return true;
     }
-
-    public void setTeamPlayers(List<Integer> teamPlayers) {
-        this.teamPlayers = teamPlayers;
-    }
+    
 }
