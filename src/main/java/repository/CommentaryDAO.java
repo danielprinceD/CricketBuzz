@@ -29,6 +29,8 @@ public class CommentaryDAO {
     private static final String USER = "root";
     private static final String PASS = "";
     
+    protected final String COMMENTARIES_GET_QUERY = "SELECT commentary_id, fixture_id, over_count, ball, run_type, commentary_text, date_time, batter_id, bowler_id, catcher_id FROM commentary WHERE fixture_id = ?";
+    
     
     public void insert(HttpServletRequest request , HttpServletResponse response , PrintWriter out , List<CommentaryVO> commentaryList) {
     	String sql = "INSERT INTO commentary (fixture_id, over_count, ball, run_type, commentary_text, batter_id, bowler_id, catcher_id) "
@@ -211,111 +213,43 @@ public class CommentaryDAO {
     }
 
     
-    public void getAllCommentaries( HttpServletRequest request , HttpServletResponse response) throws IOException , SQLException {
+    public List<CommentaryVO> getCommentariesByFixtureId(Integer fixtureId) throws IOException , SQLException {
     		
-    	PrintWriter out = response.getWriter();
-    	String commentaryId = request.getParameter("commentary_id");
-        String fixtureId = request.getParameter("fixture_id");
-        
+    	List<CommentaryVO> commentaries = new ArrayList<>();
 
-        if ((commentaryId == null || commentaryId.isEmpty()) && (fixtureId == null || fixtureId.isEmpty())) {
-            throw new SQLException("Either commentary_id or fixture_id must be provided.");
-        }
+    	
 
-        StringBuilder sql = new StringBuilder("SELECT commentary_id, fixture_id,")
-            .append("       over_count,")
-            .append("       ball,")
-            .append("       run_type,")
-            .append("       commentary_text,")
-            .append("       date_time,")
-            .append("       batter_id,")
-            .append("       bowler_id,")
-            .append("       catcher_id")
-            .append(" FROM commentary WHERE ");
-
-        List<Object> params = new ArrayList<>();
-        
-        if (commentaryId != null && !commentaryId.isEmpty()) {
-            sql.append("commentary_id = ?");
-            params.add(Integer.parseInt(commentaryId));
-        }
-
-        if (fixtureId != null && !fixtureId.isEmpty()) {
-            if (!params.isEmpty()) {
-                sql.append(" AND ");
-            }
-            sql.append("fixture_id = ?");
-            params.add(Integer.parseInt(fixtureId));
-        }
-        JSONArray commentaryArray = CommentaryRedisUtil.getByFixtureID(Integer.parseInt(fixtureId));
-        
-        if(commentaryArray.length() > 0)
-        {
-        	out.print(commentaryArray);
-        	return;
-        }
-        
-        if(commentaryId != null && !commentaryId.isEmpty())
-        {
-        	commentaryArray = CommentaryRedisUtil.getByCommentaryID(Integer.parseInt(commentaryId));
-        	if(!commentaryArray.isEmpty())
-        	{
-        		out.print(commentaryArray);
-        		return;
-        	}
-        }
-        
-        if(fixtureId != null && !fixtureId.isEmpty())
-        {
-        	commentaryArray = CommentaryRedisUtil.getByFixtureID(Integer.parseInt(fixtureId));
-        	if(!commentaryArray.isEmpty())
-        		out.print(commentaryArray);
-        }
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+             PreparedStatement pstmt = conn.prepareStatement(COMMENTARIES_GET_QUERY)) {
 
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
+        	pstmt.setInt(1, fixtureId);
+        	
 
             try (ResultSet rs = pstmt.executeQuery()) {
 
                 while (rs.next()) {
-                    JSONObject commentary = new JSONObject();
-                    commentary.put("commentaryId", rs.getInt("commentary_id"));
-                    commentary.put("fixtureId", rs.getInt("fixture_id"));
+                	CommentaryVO commentary = new CommentaryVO();
+                    commentary.setCommentaryId(rs.getInt("commentary_id"));
                     
-                    
-                    commentary.put("overCount", rs.getInt("over_count"));
-                    commentary.put("ball", rs.getInt("ball"));
-                    commentary.put("runType", rs.getString("run_type"));
-                    commentary.put("commentaryText", rs.getString("commentary_text"));
-                    commentary.put("dateTime", rs.getString("date_time"));
-                    commentary.put("batterId", rs.getInt("batter_id"));
-                    commentary.put("bowlerId", rs.getInt("bowler_id"));
-                    commentary.put("catcherId", rs.getInt("catcher_id"));
+                    commentary.setFixtureId(rs.getInt("fixture_id"));
+                    commentary.setOverCount( rs.getInt("over_count"));
+                    commentary.setBall(rs.getInt("ball"));
+                    commentary.setRunType(rs.getString("run_type"));
+                    commentary.setCommentaryText( rs.getString("commentary_text"));
+                    commentary.setDateTime(rs.getString("date_time"));
+                    commentary.setBatterId(rs.getInt("batter_id"));
+                    commentary.setBowlerId(rs.getInt("bowler_id"));
+                    Object catcher = rs.getObject("catcher_id");
+                    if(catcher != null)
+                    commentary.setCatcherId((int) catcher);
 
-                    commentaryArray.put(commentary);
+                    commentaries.add(commentary);
                 }
-
-                if (commentaryArray.length() > 0) {
-                    response.setContentType("application/json");
-                    
-                    java.lang.reflect.Type listType = new com.google.gson.reflect.TypeToken<List<CommentaryVO>>() {}.getType();
-        	        List<CommentaryVO> newCommentaries = new Gson().fromJson(commentaryArray.toString(), listType);
-                    CommentaryRedisUtil.setCommentaryByTourId( Integer.parseInt(fixtureId) , newCommentaries );
-                    
-                    out.print(commentaryArray.toString());
-                } else {
-                    Extra.sendError(response, out, "No commentary found for the provided ID(s).");
-                }
+                
             }
-
-        } catch (SQLException e) {
-            Extra.sendError(response, out, "Database error: " + e.getMessage());
-            e.printStackTrace();
-        }
+            return commentaries;
+        } 
 	}
     
     	public void deleteByFixtureId(HttpServletResponse response  , String fixtureIdParam) throws IOException {

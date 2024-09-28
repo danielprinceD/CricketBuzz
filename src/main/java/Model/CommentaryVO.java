@@ -43,22 +43,6 @@ public class CommentaryVO {
         this.fixtureId = fixtureId;
     }
 
-//    public int getOverCount() {
-//        return over_count;
-//    }
-//
-//    public void setOverCount(int overCount) {
-//        this.over_count = overCount;
-//    }
-//
-//    public int getBall() {
-//        return ball;
-//    }
-//
-//    public void setBall(int ball) {
-//        this.ball = ball;
-//    }
-
     public String getRunType() {
         return runType;
     }

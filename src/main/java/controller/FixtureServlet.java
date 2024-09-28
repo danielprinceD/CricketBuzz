@@ -20,16 +20,20 @@ public class FixtureServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 1L;
     private static FixtureDAO fixtureDAO;
+    private static CommentaryDAO commentaryDAO;
     
     private final String FIXTURE_ID = "/([0-9]+)";
     private final String FIXTURE_ID_TEAM_ID_PLAYING_11 = "/([0-9]+)/teams/([0-9]+)/playing11s";
+    private final String COMMENTARY = "/([0-9]+)/commentaries";
     
     private final Pattern FIXTURE_ID_COMPILE = Pattern.compile(FIXTURE_ID);
     private final Pattern FIXTURE_ID_TEAM_ID_PLAYING_11_COMPILE = Pattern.compile(FIXTURE_ID_TEAM_ID_PLAYING_11);
+    private final Pattern COMMENTARIES_COMPILE = Pattern.compile(COMMENTARY);
     
     @Override
     public void init() {
     	fixtureDAO = new FixtureDAO();
+    	commentaryDAO = new CommentaryDAO();
     }
     
     @Override
@@ -73,6 +77,22 @@ public class FixtureServlet extends HttpServlet {
 					
 					out.print(teamJson);
 					
+				}
+				return;
+			}
+			
+			if(PathMatcherUtil.matchesPattern(pathInfo , COMMENTARY))
+			{
+				Matcher matcher = COMMENTARIES_COMPILE.matcher(pathInfo);
+				if(matcher.find())
+				{
+					Integer fixtureId = Integer.parseInt(matcher.group(1));
+					
+					List<CommentaryVO> commentaries = commentaryDAO.getCommentariesByFixtureId(fixtureId);
+					if(commentaries.size() <= 0)
+						throw new Exception("No Data Found");
+					
+					out.print(new Gson().toJson(commentaries));
 				}
 				return;
 			}
