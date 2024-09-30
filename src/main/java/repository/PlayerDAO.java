@@ -131,7 +131,7 @@ public class PlayerDAO {
 	                int rowsAffected = pstmt.executeUpdate();
 	                if(rowsAffected > 0 && PlayerRedisUtil.isCached())
 	                	PlayerRedisUtil.setPlayerById(player, player.getId());
-	                	
+	                
 	                return rowsAffected > 0;
 	            }
 	        }
@@ -163,6 +163,8 @@ public class PlayerDAO {
 	            if(PlayerRedisUtil.isCached())
 	            	PlayerRedisUtil.deletePlayerById(playerId);
 	            	
+	            if(affectedRows > 0)
+	            	PlayerRedisUtil.inValidatePlayer(playerId);
 	            	
 	            return (affectedRows > 0);
 	        }

@@ -2,12 +2,12 @@ package repository;
 
 import java.io.PrintWriter;
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.servlet.http.HttpServletResponse;
 import model.*;
+import utils.TeamRedisUtil;
 import utils.TournamentRedisUtil;
 import controller.*;
 
@@ -60,10 +60,12 @@ public class TournamentDAO {
         return tournaments;
     }
 
-    public TournamentVO getTournamentById(int tourId) throws SQLException {
+    public TournamentVO getTournamentById(Integer tourId) throws SQLException {
         
-    	TournamentVO tournament = null;
-    
+    	TournamentVO tournament = TournamentRedisUtil.getTournamentById(tourId);
+    	
+    	if(tournament != null)
+    		return tournament;
     	
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement stmt = conn.prepareStatement(GET_TOURNAMENT_BY_ID)) {
@@ -83,13 +85,19 @@ public class TournamentDAO {
                 List<TournamentTeamVO> teams = getTeamsByTournamentId(tournament.getTourId());                
                 tournament.setTeamCount(teams.size());
             }
+            
+            if(tournament != null)
+            	TournamentRedisUtil.setTournamentsById(tournament, tourId);
         }
         return tournament;
     }
 
-    public List<TournamentTeamVO> getTeamsByTournamentId(int tourId) throws SQLException {
+    public List<TournamentTeamVO> getTeamsByTournamentId(Integer tourId) throws SQLException {
         
-    	List<TournamentTeamVO> teams = new ArrayList<>();
+    	List<TournamentTeamVO> teams = TeamRedisUtil.getAll(tourId);
+    	
+    	if(teams != null && teams.size() > 0)
+    		return teams;
     	
     	try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement stmt = conn.prepareStatement(TEAMS_BY_TOURNAMENT_ID)) {
@@ -105,6 +113,8 @@ public class TournamentDAO {
                 team.setNetRunRate(rs.getDouble("net_run_rate"));
                 teams.add(team);
             }
+            if(teams.size() > 0)
+            	TeamRedisUtil.setAllTeams(teams, tourId);
         }
         return teams;
     }
@@ -291,6 +301,8 @@ public class TournamentDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	TournamentRedisUtil.inValidateTournament(tourId);
+            	TournamentRedisUtil.invalidateAll();
                 return true;
             }
         }
@@ -308,6 +320,8 @@ public class TournamentDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	TournamentRedisUtil.inValidateTournament(tourId);
+            	TournamentRedisUtil.invalidateAll();
             	return true;   
             }
         }
@@ -324,6 +338,8 @@ public class TournamentDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	TournamentRedisUtil.inValidateTournament(tourId);
+            	TournamentRedisUtil.invalidateAll();
             	return true;
             } 
         }
@@ -361,7 +377,7 @@ public class TournamentDAO {
 	                setPreparedStatementValues(pstmt, tournamentVO);
 	
 	                int rowsAffected = pstmt.executeUpdate();
-	                Integer tourId = tournamentVO.getTourId(); 
+	                Integer tourId = tournamentVO.getTourId();
 	              
 	                if (!isPut) {
 	                    tourId = getGeneratedTourId(pstmt);
@@ -374,6 +390,9 @@ public class TournamentDAO {
 	                }
 	
 	                if (rowsAffected > 0) {
+	                	
+	                	TournamentRedisUtil.invalidateAll();
+	                	
 	                	conn.commit();
 	                    return true;
 	                    

@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import repository.*;
 import utils.PathMatcherUtil;
+import utils.PlayerRedisUtil;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -129,6 +130,7 @@ public class PlayerServlet extends HttpServlet {
 	        }
 
 	        conn.commit();
+	        PlayerRedisUtil.inValidatePlayers();
 	        Extra.sendSuccess(response, out, "Players processed successfully.");
 	        
 	    } catch (Exception e) {

@@ -1,15 +1,12 @@
 package utils;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import com.google.gson.reflect.TypeToken;
 import java.util.Set;
-
-import javax.security.auth.kerberos.KerberosTicket;
-
 import org.json.JSONObject;
-
 import com.google.gson.Gson;
-
 import config.RedisConfig;
 import model.FixtureVO;
 import model.TournamentVO;
@@ -30,39 +27,44 @@ public class FixtureRedisUtil {
 		return false;
 	}
 	
-	public static List<FixtureVO> getFixtureById(int fixtureId){
-		List<FixtureVO> result = new ArrayList<>();
+	public static void inValidateFixture(Integer fixtureId)
+	{
+		try (Jedis jedis = RedisConfig.getJedis().getResource() ) {
+			jedis.del("fixtures:" + fixtureId);
+		}
+	}
+	
+	public static FixtureVO getFixtureById(int fixtureId){
 		try (Jedis jedis = RedisConfig.getJedis().getResource() ) {
 			
-			Set<String> Keys = jedis.keys(TOURNAMENT_REDIS_PREFIX + "*");
+			String json = jedis.get(FIXTURE_REDIS_PREFIX + fixtureId);
 			
-			for (String key : Keys) {
-	            String fixtureJSON = jedis.get(key); 
-	            if (fixtureJSON != null) {
-	                FixtureVO fixture = new Gson().fromJson(fixtureJSON, FixtureVO.class);
-
-	                if (fixture.getFixtureId() == fixtureId) {
-	                    result.add(fixture);
-	                    System.out.println("GET:ID");
-	                }
-	            }
-	        }
+			if(json  != null)
+			{
+				System.out.println("GET : FIXTURE ID");
+				return new Gson().fromJson(json, FixtureVO.class);
+			}
 			
 		}
-		return result; 
+		return null; 
+	}
+	
+	public static void setFixtureId(FixtureVO fixture, Integer fixtureId) {
+		try (Jedis jedis = RedisConfig.getJedis().getResource() ) {
+			String key = FIXTURE_REDIS_PREFIX + fixtureId;
+			jedis.set( key , new JSONObject(fixture).toString());
+			System.out.println("SET : FIXTURE ID");
+		}
 	}
 	
     public static void setFixtureByTourID(List<FixtureVO> fixtures , int tourId) {
         try (Jedis jedis = RedisConfig.getJedis().getResource() ) {
-        	
-        	
-        	for(FixtureVO fixture : fixtures)
-        	{
-        		String key = TOURNAMENT_REDIS_PREFIX + tourId + ":" + FIXTURE_REDIS_PREFIX  + fixture.getFixtureId();
-        		
-        		jedis.set(key , new JSONObject(fixture).toString());
-        	}
-            System.out.println("SET:FIXTURE_ID");
+        		String key = TOURNAMENT_REDIS_PREFIX + tourId + ":" + FIXTURE_REDIS_PREFIX  + "all";
+        		String json = new Gson().toJson(fixtures);
+        		if(json != null){
+        			jedis.set(key , json);
+        			System.out.println("SET:FIXTURE_ID");        			
+        		}
         }
     }
     
@@ -83,20 +85,15 @@ public class FixtureRedisUtil {
     public static List<FixtureVO> getFixturesByTourId(Integer tourid) {
     	
         List<FixtureVO> tournaments = new ArrayList<>();
-        if(tourid == null)
-        	return tournaments;
+        
         try (Jedis jedis = RedisConfig.getJedis().getResource()) {
             
-        	Set<String> keys = jedis.keys(TOURNAMENT_REDIS_PREFIX + tourid + ":" + FIXTURE_REDIS_PREFIX + "*");
+        	String json = jedis.get(TOURNAMENT_REDIS_PREFIX + tourid + ":" + FIXTURE_REDIS_PREFIX + "all");
+        	Type type = new TypeToken <List<FixtureVO>> () {}.getType();
+        	if(json != null)
+        		tournaments = new Gson().fromJson(json, type);
             
-            for (String key : keys) {
-            	
-            	String fixtureJSON = jedis.get(key);
-            	FixtureVO tournament = new Gson().fromJson(fixtureJSON, FixtureVO.class);
-                tournaments.add(tournament);
-            }
-            
-            if(!tournaments.isEmpty())
+            if(tournaments != null && !tournaments.isEmpty())
             	System.out.println("All Data fetched from cache");
         }
         

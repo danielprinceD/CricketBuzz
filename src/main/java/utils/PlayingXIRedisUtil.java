@@ -21,6 +21,27 @@ public class PlayingXIRedisUtil {
 			return false;
 	}
 	
+	public static void inValidateByFixtureIdTeamId(Integer fixtureId , Integer teamId) {
+		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
+			jedis.del("fixtures:" + fixtureId + ":" + TEAM_REDIX_PREFIX + teamId + ":playing11s:all");
+		}
+	}
+	
+	public static void inValidatePlaying11sByFixtureId(Integer fixtureId) {
+        try (Jedis jedis = RedisConfig.getJedis().getResource()) {
+            String pattern = "fixtures:" + fixtureId + ":*:" + "playing11s:all";
+            Set<String> keys = jedis.keys(pattern);
+            if (!keys.isEmpty()) {
+                jedis.del(keys.toArray(new String[0]));
+                System.out.println("Invalidated playing11s for fixtureId: " + fixtureId);
+            } else {
+                System.out.println("No keys found to invalidate for fixtureId: " + fixtureId);
+            }
+        } catch (Exception e) {
+            System.err.println("Error invalidating playing11s: " + e.getMessage());
+        }
+    }
+	
 	public static JSONArray getPlayingXIByFixtureIdByTeamId(int fixtureID , int teamID){
 		
 		JSONArray playingXIs = new JSONArray();

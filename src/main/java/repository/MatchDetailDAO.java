@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
 import model.*;
+import utils.FixtureRedisUtil;
 import controller.*;
 
 public class MatchDetailDAO {
@@ -141,6 +142,7 @@ public class MatchDetailDAO {
         	int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
+            	FixtureRedisUtil.inValidateFixture(fixtureId);
             	return true;
             }
         } 

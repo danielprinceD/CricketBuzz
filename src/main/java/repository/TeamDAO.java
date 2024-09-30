@@ -7,13 +7,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
-import jakarta.validation.Path.ReturnValueNode;
 import model.PlayerVO;
 import model.TeamVO;
+import utils.TeamRedisUtil;
 
 public class TeamDAO {
    
@@ -25,17 +23,21 @@ public class TeamDAO {
     
     public TeamVO getTeamById(int teamId) throws SQLException {
         
-
+    	TeamVO team = TeamRedisUtil.getOne(teamId);
+    	
+    	if(team != null)
+    		return team;
+    	
+    	team = new TeamVO();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             java.sql.PreparedStatement stmt = conn.prepareStatement(GET_TEAM_BY_ID);
-             ) {
+             java.sql.PreparedStatement stmt = conn.prepareStatement(GET_TEAM_BY_ID)) {
+        	
         	
         	stmt.setInt(1, teamId);
         	
         	ResultSet rs = stmt.executeQuery();	
 
-        	TeamVO team = new TeamVO();
             if (rs.next()) {
                 team.setTeamId(rs.getInt("team_id"));
                 team.setName(rs.getString("team_name"));
@@ -59,6 +61,9 @@ public class TeamDAO {
                 }
                 team.setPlayers(players);
             }
+            if(team != null)
+            	TeamRedisUtil.setTeamById(team, teamId);
+            
             return team;
         }
 
@@ -151,7 +156,11 @@ public class TeamDAO {
                         teamPlayerStmt.executeUpdate();
                     }
                 }
-
+                
+                if(isPut)
+                for(TeamVO team : teams)
+                	TeamRedisUtil.inValidateTeam(team.getTeamId());
+                
                 conn.commit();
                 System.out.println("Data inserted/updated successfully.");
             } catch (Exception e) {
@@ -162,7 +171,7 @@ public class TeamDAO {
         return true;
     }
     
-    public boolean deleteTeamById(int teamId) throws SQLException {
+    public boolean deleteTeamById(Integer teamId) throws SQLException {
         String deleteSQL = "DELETE FROM team WHERE team_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -173,6 +182,7 @@ public class TeamDAO {
             int rowsAffected = stmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	TeamRedisUtil.inValidateTeam(teamId);
                 System.out.println("Team with team_id " + teamId + " deleted successfully.");
                 return true;
             } else {
@@ -193,6 +203,7 @@ public class TeamDAO {
             int rowsAffected = stmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	TeamRedisUtil.inValidateTeam(teamId);
                 System.out.println("Players associated with team_id " + teamId + " deleted successfully.");
                 return true;
             } else {
@@ -215,6 +226,7 @@ public class TeamDAO {
             int rowsAffected = stmt.executeUpdate();
 
             if (rowsAffected > 0) {
+            	TeamRedisUtil.inValidateTeam(teamId);
                 System.out.println("Players associated with team_id " + teamId + " deleted successfully.");
                 return true;
             } else {

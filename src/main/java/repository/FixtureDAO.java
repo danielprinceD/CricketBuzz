@@ -8,6 +8,9 @@ import model.MatchDetailVO;
 import model.PlayingXIVO;
 import model.TeamVO;
 import model.VenueVO;
+import utils.FixtureRedisUtil;
+import utils.TeamRedisUtil;
+import utils.TournamentRedisUtil;
 
 public class FixtureDAO {
 	
@@ -321,8 +324,8 @@ public class FixtureDAO {
                     totalRowsAffected += pstmt.executeUpdate();
                     
                 }
-                
                 conn.commit();
+                TournamentRedisUtil.invalidateFixtures(tourId);
                 
                 if (totalRowsAffected > 0)
                     return true;
@@ -347,7 +350,11 @@ public class FixtureDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) 
+            {
+            	
+            	TournamentRedisUtil.invalidateFixtures(tourId);
             	return true;
+            }
         }
         return false;
     }
@@ -365,7 +372,10 @@ public class FixtureDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) 
-            	return true;
+            {
+            	FixtureRedisUtil.inValidateFixture(fixtureId);
+            	return true;            	
+            }
         }
         return false;
     }
@@ -376,7 +386,12 @@ public class FixtureDAO {
     	
         StringBuilder sql = new StringBuilder("SELECT fixture_id, status , round ,team1_id, team2_id, winner_id , match_date FROM fixture WHERE tour_id = ?");
         
-        List<FixtureVO> fixtures = new ArrayList<>();
+        List<FixtureVO> fixtures = FixtureRedisUtil.getFixturesByTourId(tourId);
+        
+        if(fixtures != null && fixtures.size() > 0)
+        	return fixtures;
+        
+        fixtures = new ArrayList<>();
         
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -401,17 +416,26 @@ public class FixtureDAO {
                     fixtures.add(fixture);
                 }
             }
+            
+            if(fixtures.size()  > 0)
+            	FixtureRedisUtil.setFixtureByTourID(fixtures, tourId);
+            
             return fixtures;
         }
     }
     
     
-    public TeamVO getTeamByIdTournamentId(int fixtureId , int teamId) throws SQLException {
+    public TeamVO getTeamByIdTournamentId(Integer fixtureId , Integer teamId) throws SQLException {
     	
+    	TeamVO team = TeamRedisUtil.getTeamDetails(fixtureId, teamId);
+    	
+    	if(team != null)
+    		return team;
+    	
+    	team = new TeamVO();
     	
     	try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
                 PreparedStatement stmt = conn.prepareStatement(FIXTURE_ID_TEAM_ID)) {
-    		TeamVO team = new TeamVO();
 
                stmt.setInt(1, teamId);
                stmt.setInt(2, fixtureId);
@@ -445,6 +469,8 @@ public class FixtureDAO {
                if(playing11s.size() > 0)
             	   team.setPlaying11s(playing11s);
                
+               if(team != null)
+            	   TeamRedisUtil.setFixtureDetails(team, fixtureId, teamId);
                
                return team;
     	}
@@ -454,8 +480,14 @@ public class FixtureDAO {
     public FixtureVO getFixtureById(Integer fixtureId) throws SQLException {
         
     	StringBuilder sql = new StringBuilder(FIXTURE_BY_ID_QUERY);
-        FixtureVO fixture = new FixtureVO();
+        FixtureVO fixture = FixtureRedisUtil.getFixtureById(fixtureId);
     	
+        if(fixture != null)
+        	return fixture;
+        
+        fixture = new FixtureVO();
+        
+        
         try (
         		Connection conn = DriverManager.getConnection(DB_URL , USER , PASS);
         		PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -501,6 +533,8 @@ public class FixtureDAO {
                     	fixture.setTossWinnerDecision(rs.getString("toss_win_decision"));
                     }
                     
+                    if(fixture != null)
+                    	FixtureRedisUtil.setFixtureId( fixture , fixtureId);
                     
                     return fixture;
                 }

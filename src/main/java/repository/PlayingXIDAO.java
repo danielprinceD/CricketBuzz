@@ -173,7 +173,9 @@ public class PlayingXIDAO {
                 pstmt.setInt(10, model.getPlayerId());
                 pstmt.addBatch();
             }
-
+            
+            PlayingXIRedisUtil.inValidatePlaying11sByFixtureId(fixtureId);
+            
             int[] rowsAffected = pstmt.executeBatch();
             if (rowsAffected.length > 0) {
             	return true;
@@ -389,6 +391,7 @@ public class PlayingXIDAO {
 
 	            pstmt.executeBatch();
 	        }
+	        PlayingXIRedisUtil.inValidateByFixtureIdTeamId(fixtureId , teamId);
 	        return true;
 	    }
 	        

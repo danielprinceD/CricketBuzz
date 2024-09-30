@@ -1,35 +1,43 @@
 package utils;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
 import com.google.gson.Gson;
-
+import com.google.gson.reflect.TypeToken;
 import config.RedisConfig;
 import model.TeamVO;
+import model.TournamentTeamVO;
 import redis.clients.jedis.Jedis;
 
 public class TeamRedisUtil {
 	
 	private static final String TEAM_REDIS_PREFIX = "teams:";
 	
-	public static List<TeamVO> getAll(){
+	public static List<TournamentTeamVO> getAll(Integer tourId){
 		
-		List<TeamVO> teams = new ArrayList<>();
+		List<TournamentTeamVO> teams = new ArrayList<>();
 		try(Jedis jedis = RedisConfig.getJedis().getResource())
 		{
-			Set<String> keys = jedis.keys(TEAM_REDIS_PREFIX + "*");
-			for (String key : keys) {
-	            String teamJSON = jedis.get(key);
-	            
-	            TeamVO team = new Gson().fromJson(teamJSON, TeamVO.class);
-	            
-	            teams.add(team);
+			String json = jedis.get( "tournaments:" + tourId + ":" + TEAM_REDIS_PREFIX + "all");
+			if(json != null)
+			{
+				Type type = new TypeToken<List<TournamentTeamVO>> () {}.getType();
+				teams  = new Gson().fromJson(json, type);
 			}
 		}
 		return teams;
 	}
+	
+	public static void inValidateTeam(Integer teamId) {
+		try(Jedis jedis = RedisConfig.getJedis().getResource())
+		{
+			jedis.del("teams:" + teamId);
+		}
+	}
+	
+	
 	
 	public static TeamVO getOne(int teamId)
 	{
@@ -42,15 +50,35 @@ public class TeamRedisUtil {
 		return null;
 	}
 	
-	public static void setAllTeams(List<TeamVO> teams) {
+	public static void setAllTeams(List<TournamentTeamVO> teams , Integer tourId) {
 	    try (Jedis jedis = RedisConfig.getJedis().getResource()) {
-	        for (TeamVO team : teams) {
-	            String teamJSON = new Gson().toJson(team);
-	            
-	            String redisKey = TEAM_REDIS_PREFIX + team.getTeamId();
-	            
-	            jedis.set(redisKey, teamJSON);
-	        }
+	        
+	    	String json = new Gson().toJson(teams);
+	    	jedis.set( "tournaments:" + tourId + ":" + TEAM_REDIS_PREFIX + "all" , json );
+	        System.out.println("All teams saved to Redis.");
+	    } 
+	}
+	
+	
+	public static TeamVO getTeamDetails(Integer fixtureId , Integer teamId){
+		
+		TeamVO teams = null;
+			try(Jedis jedis = RedisConfig.getJedis().getResource())
+			{
+				String json = jedis.get( "fixtures:" + fixtureId + ":" + TEAM_REDIS_PREFIX + teamId + ":playing11s:all");
+				if(json != null)
+				{
+					teams  = new Gson().fromJson(json, TeamVO.class);
+				}
+				return teams;
+			}
+		}
+	
+	public static void setFixtureDetails( TeamVO teams , Integer fixtureId , Integer teamId) {
+	    try (Jedis jedis = RedisConfig.getJedis().getResource()) {
+	        
+	    	String json = new Gson().toJson(teams);
+	    	jedis.set(  "fixtures:" + fixtureId + ":" + TEAM_REDIS_PREFIX + teamId + ":playing11s:all" , json);
 	        System.out.println("All teams saved to Redis.");
 	    } 
 	}

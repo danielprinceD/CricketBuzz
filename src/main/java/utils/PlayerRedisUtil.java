@@ -26,6 +26,21 @@ public class PlayerRedisUtil {
 		}
 	}
 	
+	public static void inValidatePlayer(Integer playerId) {
+		try(Jedis jedis = RedisConfig.getJedis().getResource())
+		{
+			jedis.del("players:" + playerId);
+		}
+	}
+	
+	public static void inValidatePlayers()
+	{
+		try(Jedis jedis = RedisConfig.getJedis().getResource())
+		{
+			jedis.del("players:*");
+		}
+	}
+	
 	public static void setPlayers(List<PlayerVO> players) {
 		
 		try(Jedis jedis = RedisConfig.getJedis().getResource())

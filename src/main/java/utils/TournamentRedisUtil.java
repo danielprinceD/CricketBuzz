@@ -16,6 +16,25 @@ public class TournamentRedisUtil {
 	private static final String TOURNAMENT_REDIS_PREFIX = "tournaments:";
 	
 	
+	public static void invalidateAll() {
+		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
+			jedis.del(TOURNAMENT_REDIS_PREFIX + "all");
+		}
+	}
+	
+	public static void invalidateFixtures(Integer tourId) {
+		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
+			jedis.del(TOURNAMENT_REDIS_PREFIX + tourId + ":fixtures:all");
+		}
+	}
+	
+	public static void inValidateTournament(Integer tourId)
+	{
+		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
+			jedis.del(TOURNAMENT_REDIS_PREFIX + tourId);
+		}
+	}
+	
 	private static boolean isCached() {
 		
 		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
@@ -37,17 +56,13 @@ public class TournamentRedisUtil {
         }
     }
     
-    public static void setTournamentsById(TournamentVO tournamentVO , int tourId)
+    public static void setTournamentsById(TournamentVO tournamentVO , Integer tourId)
     {
     	try(Jedis jedis = RedisConfig.getJedis().getResource())
-    	{
-    		if(isCached())
-    		{    			
-	    		String key =TOURNAMENT_REDIS_PREFIX + tourId;
-	    		jedis.set(key  , tournamentVO.toJson());
-	    		System.out.println("Data is updated in redis");
-    		}
-    		
+    	{    			
+    		String key =TOURNAMENT_REDIS_PREFIX + tourId;
+    		jedis.set(key  , tournamentVO.toJson());
+    		System.out.println("Data is updated in redis");
     	}
     }
 
