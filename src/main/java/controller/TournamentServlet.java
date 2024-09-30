@@ -36,6 +36,7 @@ public class TournamentServlet extends HttpServlet {
     private static final String PASS = "";
     
     private TournamentDAO tournamentDAO;
+    private FixtureDAO fixtureDAO;
     
     private final String TOURNAMENT_ID = "/([0-9]+)";
     private final String TOURNAMENT_ID_TEAMS = "/([0-9]+)/teams";
@@ -48,6 +49,7 @@ public class TournamentServlet extends HttpServlet {
     @Override
     public void init() {
     	tournamentDAO = new TournamentDAO();
+    	fixtureDAO = new FixtureDAO();
     }
     
     
@@ -139,78 +141,62 @@ public class TournamentServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
+        Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
+    	PrintWriter out = response.getWriter();
+    	
+    	String pathInfo = request.getPathInfo();
         
-        StringBuilder jsonString = new StringBuilder();
-        BufferedReader reader = request.getReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            jsonString.append(line);
+		
+        try {
+			
+        
+		if(pathInfo == null)
+		{
+
+			String jsonString = Extra.convertToJson(request);
+			TypeToken<List<TournamentVO>> token = new TypeToken<List<TournamentVO>>() {};
+	        List<TournamentVO> tournamentsVO = new Gson().fromJson(jsonString, token.getType());
+	        
+	        Boolean status = tournamentDAO.insertOrUpdateData(tournamentsVO, isPut);
+	        
+	        if(status)
+	        	Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
+	        else 
+	        	Extra.sendError(response, out, "Failed to insert/update team");
+		        
+			return;
+		}
+		
+		
+		if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID_FIXTURES))
+        {
+        	Matcher matcher = TournamentIdFixtures.matcher(pathInfo);
+        	if(matcher.find())
+        	{
+        		String jsonString = Extra.convertToJson(request);
+        		
+        		java.lang.reflect.Type fixtureListType = new TypeToken<List<FixtureVO>>() {}.getType();
+                List<FixtureVO> fixtureModelList = new Gson().fromJson( jsonString.toString() , fixtureListType );
+                
+        		Integer tournamentId = Integer.parseInt(matcher.group(1));
+        		
+        			Boolean status = fixtureDAO.addManyFixture( fixtureModelList , tournamentId , request.getMethod());
+				
+        		
+        		if(status)
+        			Extra.sendSuccess(response, out,  "Fixtures added/updated successfully.");
+        		else  Extra.sendError(response, out, "No fixtures were added/updated.");
+        		
+        	}
         }
         
-        TypeToken<List<TournamentVO>> token = new TypeToken<List<TournamentVO>>() {};
-        List<TournamentVO> tournamentsVO = new Gson().fromJson(jsonString.toString(), token.getType());
-
-        PrintWriter out = response.getWriter();
-
-
-        for (TournamentVO tournamentVO : tournamentsVO) {
-            
-        	if(request.getMethod().equalsIgnoreCase("PUT"))
-        	{
-        		if(tournamentVO.getTourId() < 0)
-        		{
-        			Extra.sendError(response, out, "TourId is required to update");
-        			return;
-        		}
-        	}
+        } catch (Exception e) {
         	
-        	Set<Integer> teamSet = new HashSet<>();
-            
-            if (!tournamentDAO.validateTourTeam(tournamentVO, teamSet , response, out)) {
-                return;
-            }
-            
-            String sql = tournamentDAO.prepareSqlStatement(request, tournamentVO, response, out);
-            if (sql == null) {
-                return;
-            }
-
-            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-                 PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                
-                conn.setAutoCommit(false); 
-                
-                tournamentDAO.setPreparedStatementValues(pstmt, tournamentVO);
-
-                int rowsAffected = pstmt.executeUpdate();
-                int tourId = tournamentVO.getTourId(); 
-              
-                if (tourId < 0 && request.getMethod().equalsIgnoreCase("POST")) {
-                    tourId = tournamentDAO.getGeneratedTourId(pstmt);
-                }
-                
-                
-
-                if (tourId > 0) {
-                    tournamentDAO.addTeamsToTour(conn, teamSet, tourId , tournamentVO);
-                }
-
-                if (rowsAffected > 0) {
-                	conn.commit();
-                    
-                	TournamentRedisUtil.setTournamentsById(tournamentVO, tourId);
-                    
-                    Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
-                } else {
-                    conn.rollback();
-                    Extra.sendError(response, out, "Failed to insert/update team");
-                }
-
-            } catch (SQLException e) {
-                Extra.sendError(response, out, e.getMessage());
-                e.printStackTrace();
-            }
-        }   
+        	e.printStackTrace();
+        	Extra.sendError(response, out, e.getMessage());
+		}
+        	
+           
     }
 
 

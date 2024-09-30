@@ -145,28 +145,24 @@ public class TournamentDAO {
         }
     }
     
-    public String prepareSqlStatement(HttpServletRequest request, TournamentVO tournamentModel, HttpServletResponse response, PrintWriter out) {
+    private String prepareSqlStatement(Boolean isPut, TournamentVO tournamentModel ) throws Exception {
 
-        if (tournamentModel.getTourId() < 0 && tournamentModel.isValid() ) {
+        if (tournamentModel.getTourId() == null && tournamentModel.isValid() ) {
             return INSERT_SQL;
-        } else if (tournamentModel.isValid() && request.getMethod().equalsIgnoreCase("PUT")) {
+        } else if (tournamentModel.isValid() && isPut) {
             return UPDATE_SQL;
-        } else {
-            Extra.sendError(response, out, "Invalid data or missing parameters.");
-            return null;
-        }
+        } 
+    	throw new Exception("Invalid data or missing parameters.");
     }
     
-	public boolean validateTourTeam(TournamentVO teamModel, Set<Integer> teamSet, HttpServletResponse response, PrintWriter out) {
+	private boolean validateTourTeam(TournamentVO teamModel, Set<Integer> teamSet) throws Exception {
 	    
 			if(teamModel.getParticipatedTeams() == null)
 				return true;
 		
 	    	for (TournamentTeamVO team : teamModel.getParticipatedTeams() ) {
-	            if (teamSet.contains(team.getTeamId())) {
-	                Extra.sendError(response, out, "Team cannot be added more than once");
-	                return false;
-	            }
+	            if (teamSet.contains(team.getTeamId())) 
+	                throw new Exception("Team cannot be added more than once");
 	            teamSet.add(team.getTeamId());
 	        }
 	
@@ -174,7 +170,7 @@ public class TournamentDAO {
 	    }
 	
 	
-	public void addTeamsToTour(Connection conn, Set<Integer> teamSet, int tourId , TournamentVO tourModel) throws SQLException {
+	private void addTeamsToTour(Connection conn, Set<Integer> teamSet, int tourId , TournamentVO tourModel) throws SQLException {
     	
 		Set<Integer> existingTeamIds = new HashSet<>();
 
@@ -264,14 +260,14 @@ public class TournamentDAO {
     
     
 	
-	public void setPreparedStatementValues(PreparedStatement pstmt, TournamentVO tourModel) throws SQLException {
+	private void setPreparedStatementValues(PreparedStatement pstmt, TournamentVO tourModel) throws SQLException {
 	        pstmt.setString(1, tourModel.getName());
 	        pstmt.setString(2, tourModel.getStartDate());
 	        pstmt.setString(3, tourModel.getEndDate());
 	        pstmt.setString(4, tourModel.getMatchCategory());
 	        pstmt.setInt(5, tourModel.getSeason());
 	        pstmt.setString(6 , tourModel.getStatus());
-	        if (tourModel.getTourId() > 0) {
+	        if (tourModel.getTourId() != null) {
 	            pstmt.setInt(7, tourModel.getTourId());
 	        }
     }
@@ -354,6 +350,63 @@ public class TournamentDAO {
         }
     }
     
+    
+    public boolean insertOrUpdateData(List<TournamentVO> tournamentsVO , Boolean isPut)throws Exception {
+    	
+	for (TournamentVO tournamentVO : tournamentsVO) {
+	            
+			if(!tournamentVO.canPost())
+				throw new Exception("Missing Parameter");
+		
+	        	if(isPut)
+	        	{
+	        		if(tournamentVO.getTourId() == null)
+	        			throw new Exception("TourId is required to update");
+	        	}
+	        	
+	        	Set<Integer> teamSet = new HashSet<>();
+	            
+	            if (!validateTourTeam(tournamentVO, teamSet))
+	                return false;
+	            
+	            String sql = prepareSqlStatement(isPut, tournamentVO );
+	            if (sql == null) 
+	                return false;
+	
+	            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+	                 PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+	                
+	                conn.setAutoCommit(false); 
+	                
+	                setPreparedStatementValues(pstmt, tournamentVO);
+	
+	                int rowsAffected = pstmt.executeUpdate();
+	                Integer tourId = tournamentVO.getTourId(); 
+	              
+	                if (!isPut) {
+	                    tourId = getGeneratedTourId(pstmt);
+	                }
+	                
+	                
+	
+	                if (tourId != null) {
+	                    addTeamsToTour(conn, teamSet, tourId , tournamentVO);
+	                }
+	
+	                if (rowsAffected > 0) {
+	                	conn.commit();
+	                    return true;
+	                    
+	                } else {
+	                    conn.rollback();
+	                    return false;
+	                }
+	
+	            } 
+	        }
+    	
+    	return false;
+    }
     
 	
 	

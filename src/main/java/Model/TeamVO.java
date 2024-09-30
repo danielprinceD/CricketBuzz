@@ -1,6 +1,7 @@
 package model;
 
 import java.util.List;
+import java.util.Set;
 
 public class TeamVO {
 	
@@ -14,7 +15,16 @@ public class TeamVO {
     private String viceCaptainName;
     private List<PlayerVO> players;
     private List<PlayingXIVO> playing11s;
+    private Set<Integer> playersList;
     
+    
+   public Set<Integer> getPlayersList(){
+	   return playersList;
+   }
+   
+   public void setPlayersList(Set<Integer> playersList) {
+	   this.playersList = playersList;
+   }
     public List<PlayingXIVO> getPlaying11s(){
     	return this.playing11s;
     }
@@ -47,7 +57,7 @@ public class TeamVO {
         this.viceCaptainName = viceCaptainName;
     }
 
-    public int getTeamId() {
+    public Integer getTeamId() {
         return teamId;
     }
 
@@ -63,7 +73,7 @@ public class TeamVO {
         this.name = name;
     }
 
-    public int getCaptainId() {
+    public Integer getCaptainId() {
         return captainId;
     }
 
@@ -71,7 +81,7 @@ public class TeamVO {
         this.captainId = captainId;
     }
 
-    public int getViceCaptainId() {
+    public Integer getViceCaptainId() {
         return viceCaptainId;
     }
 
@@ -79,7 +89,7 @@ public class TeamVO {
         this.viceCaptainId = viceCaptainId;
     }
 
-    public int getWicketKeeperId() {
+    public Integer getWicketKeeperId() {
         return wicketKeeperId;
     }
 
@@ -96,8 +106,12 @@ public class TeamVO {
     }
     
     public boolean canPost() {
+    	if(name == null || category == null || captainId == null || viceCaptainId == null || wicketKeeperId == null)
+    		return false;
     	
     	return true;
     }
+    
+    
     
 }

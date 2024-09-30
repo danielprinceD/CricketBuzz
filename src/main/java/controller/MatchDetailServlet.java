@@ -45,7 +45,6 @@ public class MatchDetailServlet extends HttpServlet {
     	
     	
     	try {
-			matchDetailDAO.insert(request, response, fixtureId , matchDetailModel);
 		} catch (Exception e) {
 			Extra.sendError(response, response.getWriter(), e.getMessage());
 		}

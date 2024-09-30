@@ -112,51 +112,51 @@ public class FixtureVO {
         this.round = round;
     }
 
-    public int getFixtureId() {
+    public Integer getFixtureId() {
         return fixtureId;
     }
 
-    public void setFixtureId(int fixtureId) {
+    public void setFixtureId(Integer fixtureId) {
         this.fixtureId = fixtureId;
     }
 
-    public int getTourId() {
+    public Integer getTourId() {
         return tourId;
     }
 
-    public void setTourId(int tourId) {
+    public void setTourId(Integer tourId) {
         this.tourId = tourId;
     }
 
-    public int getTeam1Id() {
+    public Integer getTeam1Id() {
         return team1Id;
     }
 
-    public void setTeam1Id(int team1Id) {
+    public void setTeam1Id(Integer team1Id) {
         this.team1Id = team1Id;
     }
 
-    public int getTeam2Id() {
+    public Integer getTeam2Id() {
         return team2Id;
     }
 
-    public void setTeam2Id(int team2Id) {
+    public void setTeam2Id(Integer team2Id) {
         this.team2Id = team2Id;
     }
 
-    public int getWinnerId() {
+    public Integer getWinnerId() {
         return winnerId;
     }
 
-    public void setWinnerId(int winnerId) {
+    public void setWinnerId(Integer winnerId) {
         this.winnerId = winnerId;
     }
 
-    public int getVenueId() {
+    public Integer getVenueId() {
         return venueId;
     }
 
-    public void setVenueId(int venueId) {
+    public void setVenueId(Integer venueId) {
         this.venueId = venueId;
     }
 

@@ -52,7 +52,7 @@ public class PlayerDAO {
 	            String sql = "INSERT INTO player (name, role, address_id, gender, rating, batting_style, bowling_style) VALUES (?, ?, ?, ?, ?, ?, ?)";
 	            
 	            try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-	                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+	                 PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 	                
 	                pstmt.setString(1, player.getName());
 	                pstmt.setString(2, player.getRole());

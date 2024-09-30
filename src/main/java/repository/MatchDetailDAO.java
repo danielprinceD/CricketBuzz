@@ -6,6 +6,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
@@ -98,13 +100,9 @@ public class MatchDetailDAO {
         }
     }
     
-    public void insert(HttpServletRequest request , HttpServletResponse response , int fixtureId , MatchDetailVO matchDetailModel) throws Exception {
+    public Boolean insert( MatchDetailVO matchDetailModel, int fixtureId , Boolean isPut) throws Exception {
 
-    	Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
-    	
-    	
-    	
-        String sql;
+    	String sql;
         if(isPut)
         {
         	sql = "UPDATE match_details SET toss_win = ? , man_of_the_match = ? , toss_win_decision = ? WHERE fixture_id = ?";
@@ -113,7 +111,6 @@ public class MatchDetailDAO {
         	sql = "INSERT INTO match_details (toss_win, man_of_the_match, toss_win_decision , fixture_id ) "
         			+ "VALUES (?, ?, ?, ?)";
         }
-        PrintWriter out = response.getWriter();
         
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -122,42 +119,32 @@ public class MatchDetailDAO {
         	if(!valid(fixtureId , "fixture" , "fixture_id"))
         		throw new Exception("Fixture ID " + fixtureId + " is not a fixture");
         	
-        	if(!valid(matchDetailModel.getToss_win() , "team" , "team_id"))
-        		throw new Exception("Toss Win Team ID " + matchDetailModel.getToss_win() + " is not a Team");
         	
-        	if(!valid(matchDetailModel.getMan_of_the_match() , "player" , "id"))
-        		throw new Exception("Man of the match ID " + matchDetailModel.getMan_of_the_match() + " is not a Player");
-        	
-        	if(!isTeamInFixture(matchDetailModel.getToss_win() , fixtureId , conn))
-        		throw new Exception("Toss Win Team ID " + matchDetailModel.getToss_win() + " is not a team in this fixture");
-        	
-        	if(!isPlayerInFixture(matchDetailModel.getMan_of_the_match() , fixtureId , conn))
-        		throw new Exception("Man of the match ID " + matchDetailModel.getMan_of_the_match() + " is not in playing 11 for this fixture");
-        	
-            pstmt.setInt(1, matchDetailModel.getToss_win());
-            pstmt.setInt(2, matchDetailModel.getMan_of_the_match());
-            pstmt.setString(3, matchDetailModel.getToss_win_decision());
-            pstmt.setInt(4, fixtureId);
 
-            int rowsAffected = pstmt.executeUpdate();
+            	if(!valid(matchDetailModel.getToss_win() , "team" , "team_id"))
+            		throw new Exception("Toss Win Team ID " + matchDetailModel.getToss_win() + " is not a Team");
+            	
+            	if(!valid(matchDetailModel.getMan_of_the_match() , "player" , "id"))
+            		throw new Exception("Man of the match ID " + matchDetailModel.getMan_of_the_match() + " is not a Player");
+            	
+            	if(!isTeamInFixture(matchDetailModel.getToss_win() , fixtureId , conn))
+            		throw new Exception("Toss Win Team ID " + matchDetailModel.getToss_win() + " is not a team in this fixture");
+            	
+            	if(!isPlayerInFixture(matchDetailModel.getMan_of_the_match() , fixtureId , conn))
+            		throw new Exception("Man of the match ID " + matchDetailModel.getMan_of_the_match() + " is not in playing 11 for this fixture");
+            	
+                pstmt.setInt(1, matchDetailModel.getToss_win());
+                pstmt.setInt(2, matchDetailModel.getMan_of_the_match());
+                pstmt.setString(3, matchDetailModel.getToss_win_decision());
+                pstmt.setInt(4, fixtureId);
+
+        	int rowsAffected = pstmt.executeUpdate();
+            
             if (rowsAffected > 0) {
-                out.println("Match details added successfully.");
-            } else {
-                out.println("Failed to add match details.");
+            	return true;
             }
-        } catch (SQLException e) {
-
-        	if (e.getSQLState().equals("23000")) {
-                response.setStatus(HttpServletResponse.SC_CONFLICT);
-                Extra.sendError(response, out, "Fixture ID must be unique. This ID already exists.");
-            }else {
-            e.printStackTrace();
-            response.getWriter().println("Database error: " + e.getMessage());
-            }
-        }
-        catch (Exception e) {
-        	Extra.sendError(response, response.getWriter(), e.getMessage());
-		}
+        } 
+        return false;
     }
     
     public void delete(HttpServletResponse response , int fixtureId) throws Exception {

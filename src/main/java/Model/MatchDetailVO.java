@@ -2,32 +2,32 @@ package model;
 
 public class MatchDetailVO {
 	
-	private int fixture_id = -1;
-	private int toss_win = -1;
-	private int man_of_the_match = -1;
+	private Integer fixture_id;
+	private Integer toss_win;
+	private Integer man_of_the_match;
 	private String toss_win_decision;
 	
-	public int getFixture_id() {
+	public Integer getFixture_id() {
         return fixture_id;
     }
 
-    public void setFixture_id(int fixture_id) {
+    public void setFixture_id(Integer fixture_id) {
         this.fixture_id = fixture_id;
     }
 
-    public int getToss_win() {
+    public Integer getToss_win() {
         return toss_win;
     }
 
-    public void setToss_win(int toss_win) {
+    public void setToss_win(Integer toss_win) {
         this.toss_win = toss_win;
     }
 
-    public int getMan_of_the_match() {
+    public Integer getMan_of_the_match() {
         return man_of_the_match;
     }
 
-    public void setMan_of_the_match(int man_of_the_match) {
+    public void setMan_of_the_match(Integer man_of_the_match) {
         this.man_of_the_match = man_of_the_match;
     }
 

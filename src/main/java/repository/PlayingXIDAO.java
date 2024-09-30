@@ -344,7 +344,7 @@ public class PlayingXIDAO {
 	    }
 	
 	    
-	    public void insertPlaying11(List<PlayingXIVO> playing11List, int fixtureId, int teamId) throws SQLException {
+	    public Boolean insertPlaying11(List<PlayingXIVO> playing11List, int fixtureId, int teamId) throws SQLException {
 	       
 	    	if (playing11List.size() > 11) {
 	            throw new SQLException("Playing XI should not be more than 11 players");
@@ -385,8 +385,6 @@ public class PlayingXIDAO {
 	                validatePlayer(model, fixtureId, teamId);
 	                
 	                
-	                
-	                
 	                pstmt.setInt(1, fixtureId);
 	                pstmt.setInt(2, model.getPlayerId());
 	                pstmt.setInt(3, teamId);
@@ -396,8 +394,10 @@ public class PlayingXIDAO {
 
 	            pstmt.executeBatch();
 	        }
+	        return true;
 	    }
-	        private void validatePlayer(PlayingXIVO model, int fixtureId, int teamId) throws SQLException {
+	        
+	    private void validatePlayer(PlayingXIVO model, int fixtureId, int teamId) throws SQLException {
 	            if (!isValid("player", "id", model.getPlayerId())) {
 	                throw new SQLException("Player ID " + model.getPlayerId() + " is not a player");
 	            }

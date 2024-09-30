@@ -37,15 +37,7 @@ public class CommentaryServlet extends HttpServlet {
         {
         	Extra.sendError(response, response.getWriter(), "Fixture ID is required");
         }
-			try {
-				commentaryDAO.getAllCommentaries( request,response);
-			} catch (IOException e) {
-				Extra.sendError(response, response.getWriter(), e.getMessage());
-				e.printStackTrace();
-			} catch (SQLException e) {
-				Extra.sendError(response, response.getWriter(), e.getMessage());
-			}
-        	return;
+        return;
         
     }
 
@@ -67,7 +59,7 @@ public class CommentaryServlet extends HttpServlet {
         Type listType = new TypeToken<List<CommentaryVO>>() {}.getType();
         List<CommentaryVO> commentaryList = new Gson().fromJson(jsonString.toString(), listType);
         
-        commentaryDAO.insert(request, response, out, commentaryList);
+        
     }
 
     

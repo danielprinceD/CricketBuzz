@@ -1,21 +1,24 @@
 package model;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.json.JSONObject;
 
 import com.google.gson.Gson;
 
 public class TournamentVO {
-    private int tourId;
+    private Integer tourId;
     private String name;
     private String startDate;
     private String endDate;
     private String matchCategory;
     private Integer season;
-    private String status = "INPROGRESS" ;
+    private String status;
     private List<TournamentTeamVO> participatedTeams;
     private Integer teamCount;
+    
     
     public void setTeamCount(Integer count) {
     	this.teamCount = count;
@@ -41,15 +44,16 @@ public class TournamentVO {
 	        if (season < 0) {
 	            return false;
 	        }
-	
+	        
+	        
 	        return true;
 	    }
     
-    public int getTourId() {
+    public Integer getTourId() {
         return tourId;
     }
 
-    public void setTourId(int tourId) {
+    public void setTourId(Integer tourId) {
         this.tourId = tourId;
     }
 
@@ -85,11 +89,11 @@ public class TournamentVO {
         this.matchCategory = matchCategory;
     }
 
-    public int getSeason() {
+    public Integer getSeason() {
         return season;
     }
 
-    public void setSeason(int season) {
+    public void setSeason(Integer season) {
         this.season = season;
     }
 
@@ -116,5 +120,11 @@ public class TournamentVO {
     public String toJson() {
 		return new JSONObject(this).toString();
 	}
+    
+    public Boolean canPost() {
+    	if(name == null || startDate == null || endDate == null || matchCategory == null || season == null || status == null || participatedTeams == null)
+    		return false;
+    	return true;
+    }
     
 }

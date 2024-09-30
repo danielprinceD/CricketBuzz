@@ -32,27 +32,22 @@ public class CommentaryDAO {
     protected final String COMMENTARIES_GET_QUERY = "SELECT commentary_id, fixture_id, over_count, ball, run_type, commentary_text, date_time, batter_id, bowler_id, catcher_id FROM commentary WHERE fixture_id = ?";
     
     
-    public void insert(HttpServletRequest request , HttpServletResponse response , PrintWriter out , List<CommentaryVO> commentaryList) {
+    public Boolean insert( Integer fixtureId  , List<CommentaryVO> commentaryList) throws Exception {
     	String sql = "INSERT INTO commentary (fixture_id, over_count, ball, run_type, commentary_text, batter_id, bowler_id, catcher_id) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
      
      
-     
-     response.setContentType("application/json");
-     response.setCharacterEncoding("UTF-8");
-
      try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
           ) {
     	 PreparedStatement pstmt = conn.prepareStatement(sql , java.sql.Statement.RETURN_GENERATED_KEYS);
-     	String fixtureId = request.getParameter("fixture_id");
-     	
      	
      
      	
      	String teamSql = "SELECT team1_id, team2_id FROM fixture WHERE fixture_id = ?";
          
          try (PreparedStatement teamPstmt = conn.prepareStatement(teamSql)) {
-             teamPstmt.setInt(1, Integer.parseInt(fixtureId));
+           
+        	 teamPstmt.setInt(1, fixtureId);
              
              try (ResultSet rs = teamPstmt.executeQuery()) {
                  if (rs.next()) {
@@ -73,7 +68,7 @@ public class CommentaryDAO {
 			     PreparedStatement team2Pstmt = conn.prepareStatement(team2sql)) {
 			
 			    team1Pstmt.setInt(1, team1Id);
-			    team1Pstmt.setInt(2, Integer.parseInt(fixtureId)); 
+			    team1Pstmt.setInt(2, fixtureId); 
 			    try (ResultSet team1Rs = team1Pstmt.executeQuery()) {
 			        while (team1Rs.next()) {
 			            team1Players.add(team1Rs.getInt("player_id"));
@@ -82,16 +77,13 @@ public class CommentaryDAO {
 			
 			   
 			    team2Pstmt.setInt(1, team2Id);
-			    team2Pstmt.setInt(2, Integer.parseInt(fixtureId)); 
+			    team2Pstmt.setInt(2, fixtureId); 
 			    try (ResultSet team2Rs = team2Pstmt.executeQuery()) {
 			        while (team2Rs.next()) {
 			            team2Players.add(team2Rs.getInt("player_id"));
 			        }
 			    }
-			} catch (SQLException e) {
-			    e.printStackTrace();
-			   
-			}
+			} 
 
      	
          for (CommentaryVO tourModel : commentaryList) {
@@ -103,8 +95,7 @@ public class CommentaryDAO {
          	else if(team2Players.contains(tourModel.getBatterId()))
          		batterTeam = 2;
          	else {
-         		Extra.sendError(response, out, "Batter ID is not a playing 11 in team ID " + team1Id + " for this fixture ID " + fixtureId);
-         		return;
+         		throw new Exception("Batter ID is not a playing 11 in team ID " + team1Id + " for this fixture ID " + fixtureId);
          	}
          	
          	if(team1Players.contains(tourModel.getBowlerId()))
@@ -112,8 +103,7 @@ public class CommentaryDAO {
          	else if(team2Players.contains(tourModel.getBowlerId()))
          		bowlerTeam = 2;
          	else {
-         		Extra.sendError(response, out, "Bowler ID is not a playing 11 in team ID " + team1Id + " for this fixture ID " + fixtureId);
-         		return;
+         		throw new Exception("Bowler ID is not a playing 11 in team ID " + team1Id + " for this fixture ID " + fixtureId);
          	}
          	
          	if(tourModel.getCatcherId() > 0 )
@@ -123,8 +113,7 @@ public class CommentaryDAO {
 	            	else  if(team2Players.contains(tourModel.getCatcherId())) 
 	            		catcherTeam = 2;
 	            	else {
-	            		Extra.sendError(response, out, "Catcher ID is not a playing 11 in team ID " + team1Id + " for this fixture ID " + fixtureId);
-	            		return;
+	            		throw new Exception("Catcher ID is not a playing 11 in team ID " + team1Id + " for this fixture ID " + fixtureId);
 	            	}
 	            	
 	            	if(catcherTeam == batterTeam)
@@ -134,14 +123,14 @@ public class CommentaryDAO {
          	if(batterTeam == bowlerTeam)
          		throw new SQLException("Batter and Bowler cannot be same team " + batterTeam);
          	
-         	int[] overAndBall = getNextBallAndOver(Integer.parseInt(fixtureId), conn);
+         	int[] overAndBall = getNextBallAndOver(fixtureId, conn);
              
              Integer overCount = overAndBall[0];
              Integer ballCount = overAndBall[1];
              
          	
-             pstmt.setInt(1, Integer.parseInt(fixtureId));
-             tourModel.setFixtureId(Integer.parseInt(fixtureId));
+             pstmt.setInt(1, fixtureId);
+             tourModel.setFixtureId(fixtureId);
              tourModel.setBall(ballCount);
              tourModel.setOverCount(overCount);
              pstmt.setInt(2, overCount );
@@ -166,28 +155,18 @@ public class CommentaryDAO {
         	 }
          }
          if (rowsAffected.length > 0) {
-        	 CommentaryRedisUtil.setCommentaryByTourId(Integer.parseInt(fixtureId), commentaryList);
-             out.println("Commentary data inserted successfully.");
+        	 CommentaryRedisUtil.setCommentaryByTourId(fixtureId, commentaryList);
+        	 return true;
          } else {
-             out.println("Failed to insert commentary data.");
+        	 throw new Exception("Failed to insert commentary data.");
          }
          
                  } else {
-                     Extra.sendError(response, out, "No fixture found with the given fixture_id");
-                     return;
+                	 throw new Exception("No fixture found with the given fixture_id");
                  }
              }
          }
-         catch (SQLException e) {
-             e.printStackTrace();
-             Extra.sendError(response, out, "Database error: " + e.getMessage());
-             return;
-         }
-
-     } catch (SQLException e) {
-         e.printStackTrace();
-         Extra.sendError(response , out , "Database error: " + e.getMessage());
-     }
+     	}
     }
     
 	

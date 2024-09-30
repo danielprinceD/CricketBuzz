@@ -189,7 +189,7 @@ public class FixtureDAO {
     }
 
     
-    public void addManyFixture(HttpServletResponse response, PrintWriter out, List<FixtureVO> fixtureModelList, String tourIdString, String method) throws ServletException , SQLException {
+    public Boolean addManyFixture( List<FixtureVO> fixtureModelList, Integer tourId, String method) throws Exception {
       
     	int totalRowsAffected = 0;
 
@@ -205,9 +205,8 @@ public class FixtureDAO {
         HashSet<String> matchVenue = new HashSet<>();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
-        	if(!isPut && ( tourIdString == null ))
+        	if(!isPut && ( tourId == null ))
         		throw new SQLException("Tour ID is required");
-        	int tourId =  Integer.parseInt(tourIdString);
         	
         		if (!isPut && !isValidTournament(tourId))
         			throw new SQLException("Tournament ID " + tourId + " is not found");
@@ -261,9 +260,9 @@ public class FixtureDAO {
                     if (!isValidTeam(fixtureModel.getTeam2Id()))
                         throw new SQLException("Team " + fixtureModel.getTeam2Id() + " is not a Team");
                     
-                    Integer winnerId = (fixtureModel.getWinnerId() < 0) ? (Integer) fixtureModel.getWinnerId()  : -1;
+                    Integer winnerId = fixtureModel.getWinnerId();
 
-                    if(winnerId != -1 && winnerId != fixtureModel.getTeam1Id() && winnerId != fixtureModel.getTeam2Id()) {
+                    if(winnerId != null && winnerId != fixtureModel.getTeam1Id() && winnerId != fixtureModel.getTeam2Id()) {
                         throw new SQLException("Winner cannot be apart from team1 or team2");
                     }
                     
@@ -298,25 +297,11 @@ public class FixtureDAO {
                 
                 conn.commit();
                 
-                if( FixtureRedisUtil.isCached() )
-                	FixtureRedisUtil.setFixtureByTourID(fixtureModelList, tourId);
-                
-                if (totalRowsAffected > 0) {
-                	
-                    Extra.sendSuccess(response, out, totalRowsAffected + " fixtures added/updated successfully.");
-                } else {
-                    Extra.sendError(response, out, "No fixtures were added/updated.");
-                }
-            } catch (SQLException e) {
-                conn.rollback();
-                Extra.sendError(response, out, e.getMessage());
+                if (totalRowsAffected > 0)
+                    return true;
             }
-        } catch (SQLException e) {
-            Extra.sendError(response, out, e.getMessage());
-        }catch (Exception e) {
-        	Extra.sendError(response, out,e.getMessage()  );
-        	e.printStackTrace();
-		}
+        } 
+        return false;
     }
 
 

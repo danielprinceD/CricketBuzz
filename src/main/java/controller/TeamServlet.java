@@ -67,8 +67,38 @@ public class TeamServlet extends HttpServlet {
 		} catch (Exception e) {
 			e.printStackTrace();
 			Extra.sendError(response, out, e.getMessage());
-		}
+		}	
+    }
+    
+    @Override 
+    protected void doPost(HttpServletRequest request , HttpServletResponse response) throws ServletException , IOException{
     	
+    	response.setContentType("application/json");
+    	PrintWriter out = response.getWriter();
+    	String pathInfo = request.getPathInfo();
+    	
+    	try {
+			
+    		
+    		String body = Extra.convertToJson(request);
+    		
+    		if(pathInfo == null)
+    		{
+    			Boolean status =  teamDAO.addTeamAndPlayers(body);
+    			if(status)
+    				Extra.sendSuccess(response, out, "Data Inserted Successfully");
+    			else 
+    				Extra.sendError(response, out, "Data insertion failed");
+    			return;
+    		}
+    		
+    		Extra.sendError(response, out, "Enter valid Path");
+    		
+		} catch (Exception e) {
+			e.printStackTrace();
+			String errorMessage =  Extra.ForeignKeyError(e.getMessage());
+			Extra.sendError(response, out, errorMessage);
+		}
     	
     	
     }

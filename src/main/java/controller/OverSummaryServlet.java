@@ -37,10 +37,7 @@ public class OverSummaryServlet extends HttpServlet {
             }
         }
 
-        JSONArray jsonArray;
         try {
-            jsonArray = new JSONArray(jsonBuffer.toString());
-            
             
             
         } catch (JSONException e) {
@@ -53,8 +50,7 @@ public class OverSummaryServlet extends HttpServlet {
         
         try {
         	
-        	overSummaryDAO.insert(request, response, response.getWriter() , jsonArray);
-			
+        	
 		} catch (Exception e) {
 			Extra.sendError(response, response.getWriter(), e.getMessage());
 		}
@@ -69,7 +65,7 @@ public class OverSummaryServlet extends HttpServlet {
 	        throws ServletException, IOException {
 		
 		try {
-			overSummaryDAO.get(request, response);
+			
 		} catch (Exception e) {
 			Extra.sendError(response, response.getWriter() , e.getMessage());
 			e.printStackTrace();
