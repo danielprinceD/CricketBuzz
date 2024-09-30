@@ -1,6 +1,7 @@
 package controller;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,6 +26,7 @@ public class FixtureServlet extends HttpServlet {
     
     private final String FIXTURE_ID = "/([0-9]+)";
     private final String FIXTURE_ID_TEAM_ID_PLAYING_11 = "/([0-9]+)/teams/([0-9]+)/playing11s";
+    private final String FIXTURE_ID_PLAYING_11 = "/([0-9]+)/playing11s";
     private final String COMMENTARY = "/([0-9]+)/commentaries";
     private final String OVER_SUMMARIES = "/([0-9]+)/over-summaries";
     private final String FIXTURE_ID_MATCH_DETAILS = "/([0-9]+)/match-details";
@@ -34,6 +36,7 @@ public class FixtureServlet extends HttpServlet {
     private final Pattern COMMENTARIES_COMPILE = Pattern.compile(COMMENTARY);
     private final Pattern OVER_SUMMARIES_COMPILE = Pattern.compile(OVER_SUMMARIES);
     private final Pattern FIXTURE_ID_MATCH_DETAILS_COMPILE = Pattern.compile(FIXTURE_ID_MATCH_DETAILS);
+    private final Pattern FIXTURE_ID_PLAYING_11_COMPILE = Pattern.compile(FIXTURE_ID_PLAYING_11);
     
     @Override
     public void init() {
@@ -134,10 +137,44 @@ public class FixtureServlet extends HttpServlet {
             throws ServletException, IOException {
     	
     	PrintWriter out = response.getWriter();
+    	Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
     	
 		try {
 			String jsonString = Extra.convertToJson(request);
 			String pathInfo = request.getPathInfo();
+			
+			if(pathInfo == null && isPut)
+			{
+				java.lang.reflect.Type fixtureListType = new TypeToken<List<FixtureVO>>() {}.getType();
+				List<FixtureVO> fixtureModelList = new Gson().fromJson( jsonString.toString() , fixtureListType );
+				Boolean status =  fixtureDAO.addManyFixture(fixtureModelList, null, isPut);
+				
+				if(status)
+					Extra.sendSuccess(response, out, "Fixtures Updated Successfully");
+				else 
+					Extra.sendError(response, out, "Data not updated");
+					
+				return;
+			}
+			
+			
+			
+			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID_PLAYING_11))
+			{
+				Matcher matcher = FIXTURE_ID_PLAYING_11_COMPILE.matcher(pathInfo);
+				if(matcher.find())
+				{
+					Integer fixtureId = Integer.parseInt(matcher.group(1));
+					Type listType = new TypeToken<List<PlayingXIVO>>() {}.getType();
+			        List<PlayingXIVO> playing11List = new Gson().fromJson(jsonString.toString(), listType);
+			        Boolean status = playingXIDAO.updatePlaying11(playing11List, fixtureId);
+			        if(status)
+			        	Extra.sendSuccess(response, response.getWriter(), "Updated Successfully");
+			        else 
+			        	Extra.sendError(response, response.getWriter(), "Not Updated");
+				}
+				return;
+			}
 			
 			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID_TEAM_ID_PLAYING_11))
 			{
@@ -150,7 +187,7 @@ public class FixtureServlet extends HttpServlet {
 					Integer fixtureId = Integer.parseInt(matcher.group(1));
 					Integer teamId = Integer.parseInt(matcher.group(2));
 					
-					Boolean status =  playingXIDAO.insertPlaying11(fixtureModelList, fixtureId , teamId);
+					Boolean status =  playingXIDAO.insertPlaying11(fixtureModelList, fixtureId , teamId );
 					
 					if(status)
 						Extra.sendSuccess(response, out, "Playing 11 Inserted Successfully");
@@ -171,7 +208,6 @@ public class FixtureServlet extends HttpServlet {
 					MatchDetailVO matchDetails = new Gson().fromJson( jsonString.toString() , MatchDetailVO.class);
 					
 					Integer fixtureId = Integer.parseInt(matcher.group(1));
-					Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
 					Boolean status = matchDetailDAO.insert(matchDetails ,  fixtureId , isPut);
 					if(status)
 						Extra.sendSuccess(response, out, "Match Details inserted successfully");
@@ -235,11 +271,29 @@ public class FixtureServlet extends HttpServlet {
     	
 		
 		PrintWriter out = response.getWriter();
+		String pathInfo = request.getPathInfo();
     	
 		try {
+			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID))
+			{
+				Matcher matcher = FIXTURE_ID_COMPILE.matcher(pathInfo);
+				if(matcher.find())
+				{
+					Integer fixtureId = Integer.parseInt(matcher.group(1));
+					
+					Boolean status = fixtureDAO.deleteFixtureById(fixtureId);
+					if(status)
+						Extra.sendError(response, out, "Fixture " + fixtureId  + " deleted");
+					else 
+						Extra.sendError(response, out, "Fixture deletion failed");
+				}
+				return;
+			}
 			
-			fixtureDAO.deleteAllFixture(request ,response , out);
+			Extra.sendError(response, out, "Invalid Path");
+			
 		} catch (Exception e) {
+			e.printStackTrace();
 			Extra.sendError(response, out, e.getMessage());
 		} 
 		

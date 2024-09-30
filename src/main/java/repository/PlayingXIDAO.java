@@ -134,35 +134,31 @@ public class PlayingXIDAO {
         return playerExistsInOtherTeam;
     }
     
-    public void updatePlaying11(List<PlayingXIVO> playing11List, String fixtureId, String teamId) throws SQLException {
+    public Boolean updatePlaying11(List<PlayingXIVO> playing11List, Integer fixtureId) throws SQLException {
         
     	String sql = "UPDATE playing_11 SET role = ?, runs = ?, balls_faced = ?, fours = ?, sixes = ?, fifties = ?, hundreds = ?, wickets_taken = ? "
-                   + "WHERE fixture_id = ? AND player_id = ? AND team_id = ?";
+                   + "WHERE fixture_id = ? AND player_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             for (PlayingXIVO model : playing11List) {
                 
-            	model.setFixtureId(Integer.parseInt(fixtureId));
-            	model.setTeamId(Integer.parseInt(teamId));
+            	model.setFixtureId(fixtureId);
             	
-            	if(!canUpdatePlayer(Integer.parseInt(fixtureId) , Integer.parseInt(teamId) , model.getPlayerId()))
+            	if(!canUpdatePlayer(fixtureId  , model.getPlayerId()))
             		throw new SQLException("Updating a player only applicable if players in playing 11");
             	
-            	if(fixtureId == null || teamId == null)
+            	if(fixtureId == null)
             		throw new SQLException("Both Fixture ID and Team ID are required");
             	
-            	if(!isValid("fixture" , "fixture_id" , Integer.parseInt(fixtureId) ))
+            	if(!isValid("fixture" , "fixture_id" , fixtureId ))
             		throw new SQLException("Fixture ID " + fixtureId + " is not a fixture");
-            	if(!isValid("team" , "team_id" , Integer.parseInt(teamId)))
-            		throw new SQLException("Team ID " + teamId + " is not a Team");
+            	
             	
             	if(!isValid("player" , "id" , model.getPlayerId()))
             		throw new SQLException("PLayer ID " + model.getPlayerId() + " is not a player");
             	
-            	if(!checkFixtureAndTeam(Integer.parseInt(fixtureId) , Integer.parseInt(teamId)))
-        			throw new SQLException("This team ID " + teamId + " has no match for this Fixture ID " + fixtureId);
             	
             	
             	pstmt.setString(1, model.getRole());
@@ -173,18 +169,18 @@ public class PlayingXIDAO {
                 pstmt.setInt(6, model.getFifties());
                 pstmt.setInt(7, model.getHundreds());
                 pstmt.setInt(8, model.getWicketsTaken());
-                pstmt.setInt(9, Integer.parseInt(fixtureId));
+                pstmt.setInt(9, fixtureId);
                 pstmt.setInt(10, model.getPlayerId());
-                pstmt.setInt(11, Integer.parseInt(teamId));
                 pstmt.addBatch();
             }
 
             int[] rowsAffected = pstmt.executeBatch();
             if (rowsAffected.length > 0) {
-            	
+            	return true;
             } else {
                 System.out.println("Failed to update player data.");
             }
+            return false;
         }
     }
 
@@ -270,16 +266,15 @@ public class PlayingXIDAO {
 	    }
 	    
 	    
-	    public boolean canUpdatePlayer(int fixtureId, int teamId, int playerId) {
-	        String sql = "SELECT COUNT(*) FROM playing_11 WHERE fixture_id = ? AND team_id = ? AND player_id = ?";
+	    public boolean canUpdatePlayer(int fixtureId, int playerId) {
+	        String sql = "SELECT COUNT(*) FROM playing_11 WHERE fixture_id = ? AND player_id = ?";
 	        boolean canUpdate = false;
 
 	        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
 	             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
 	            pstmt.setInt(1, fixtureId);
-	            pstmt.setInt(2, teamId);
-	            pstmt.setInt(3, playerId);
+	            pstmt.setInt(2, playerId);
 
 	            try (ResultSet rs = pstmt.executeQuery()) {
 	                if (rs.next()) {

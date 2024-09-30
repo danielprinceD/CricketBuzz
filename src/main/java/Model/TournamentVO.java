@@ -1,11 +1,7 @@
 package model;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
 import org.json.JSONObject;
-
 import com.google.gson.Gson;
 
 public class TournamentVO {

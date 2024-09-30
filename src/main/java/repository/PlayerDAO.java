@@ -103,6 +103,9 @@ public class PlayerDAO {
    	    
 	    public boolean updatePlayer(PlayerVO player) throws SQLException {
 	        
+	    	if(player.getId() == null)
+	    		throw new SQLException("Player ID must required");
+	    	
 	    	int addressId = getOldAddressId(player.getId());
 	    	
 	    	if(addressId != player.getAddress().getAddressId())
@@ -204,7 +207,8 @@ public class PlayerDAO {
 
             }
         }
-        if(player != null && PlayerRedisUtil.isCached() )
+        
+        if(player != null)
         	PlayerRedisUtil.setPlayerById(player , playerId);
         	
         return player;

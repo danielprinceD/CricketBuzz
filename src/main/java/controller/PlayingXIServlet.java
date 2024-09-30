@@ -57,7 +57,6 @@ public class PlayingXIServlet extends HttpServlet {
         
         try {
         	
-        	playingXIDAO.updatePlaying11(playing11List, fixtureId, teamId);
         	Extra.sendSuccess(response, response.getWriter(), "Updated Successfully");
         	
         }catch (Exception e) {

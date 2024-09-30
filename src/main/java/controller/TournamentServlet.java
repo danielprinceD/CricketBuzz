@@ -1,26 +1,14 @@
 package controller;
 
-import java.io.BufferedReader;
 import com.google.gson.reflect.TypeToken;
-
-import jakarta.ws.rs.core.NewCookie;
 import repository.*;
 import utils.PathMatcherUtil;
-import utils.TournamentRedisUtil;
-
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.PathMatcher;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -31,19 +19,19 @@ import model.*;
 public class TournamentServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 1L;
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
-    private static final String USER = "root";
-    private static final String PASS = "";
     
     private TournamentDAO tournamentDAO;
     private FixtureDAO fixtureDAO;
     
     private final String TOURNAMENT_ID = "/([0-9]+)";
     private final String TOURNAMENT_ID_TEAMS = "/([0-9]+)/teams";
+    private final String TOURNAMENT_ID_TEAMS_ID = "/([0-9]+)/teams/([0-9]+)";
     private final String TOURNAMENT_ID_FIXTURES = "/([0-9]+)/fixtures";
+    
     
     private final Pattern TournamentCompile = Pattern.compile(TOURNAMENT_ID);
     private final Pattern TournamentIdTeams = Pattern.compile(TOURNAMENT_ID_TEAMS);
+    private final Pattern TournamentIdTeamId = Pattern.compile(TOURNAMENT_ID_TEAMS_ID);
     private final Pattern TournamentIdFixtures = Pattern.compile(TOURNAMENT_ID_FIXTURES);
     
     @Override
@@ -130,9 +118,11 @@ public class TournamentServlet extends HttpServlet {
             
         } catch (NumberFormatException | SQLException e ) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
             out.print("{ \"error\": \"" + e.getMessage() + "\" }");
         }
         catch (Exception e) {
+        	e.printStackTrace();
         	Extra.sendError(response, out, e.getMessage());
 		}
     }
@@ -141,7 +131,8 @@ public class TournamentServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
-        Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
+        
+    	Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
     	PrintWriter out = response.getWriter();
     	
     	String pathInfo = request.getPathInfo();
@@ -160,9 +151,20 @@ public class TournamentServlet extends HttpServlet {
 	        Boolean status = tournamentDAO.insertOrUpdateData(tournamentsVO, isPut);
 	        
 	        if(status)
-	        	Extra.sendSuccess(response, out, "Team and players inserted/updated successfully");
+	        {
+	        	if(isPut)
+	        		Extra.sendSuccess(response, out, "Team and players updated successfully");
+	        	else 
+	        		Extra.sendSuccess(response, out, "Team and players inserted successfully");
+	        }
 	        else 
-	        	Extra.sendError(response, out, "Failed to insert/update team");
+	        {
+	        	if(isPut)
+	        		Extra.sendError(response, out, "Failed to update team");
+	        	else 
+	        		Extra.sendError(response, out, "Failed to insert team");
+	        }
+	        	
 		        
 			return;
 		}
@@ -180,7 +182,7 @@ public class TournamentServlet extends HttpServlet {
                 
         		Integer tournamentId = Integer.parseInt(matcher.group(1));
         		
-        			Boolean status = fixtureDAO.addManyFixture( fixtureModelList , tournamentId , request.getMethod());
+        			Boolean status = fixtureDAO.addManyFixture( fixtureModelList , tournamentId , false);
 				
         		
         		if(status)
@@ -193,7 +195,7 @@ public class TournamentServlet extends HttpServlet {
         } catch (Exception e) {
         	
         	e.printStackTrace();
-        	Extra.sendError(response, out, e.getMessage());
+        	Extra.sendError(response, out, Extra.ForeignKeyError(e.getMessage()));
 		}
         	
            
@@ -210,32 +212,91 @@ public class TournamentServlet extends HttpServlet {
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        String pathInfoString = request.getPathInfo();
-        String[] pathArray = pathInfoString != null ? pathInfoString.split("/") : null;
+        String pathInfo = request.getPathInfo();
+        
         PrintWriter out = response.getWriter();
 
-        if (pathArray == null || pathArray.length <= 1) {
+        if (pathInfo == null) {
             Extra.sendError(response, out, "Tournament ID is required");
             return;
         }
-
-        String tourId = pathArray[1];
-
-        if (pathArray.length == 2) {
-           tournamentDAO.deleteTournament(response, out, tourId);
-        }
-        else if (pathArray.length == 3 && pathArray[2].equals("teams") ) {
-        	tournamentDAO.deleteAllTeamFromTour(response, out, tourId);
-        }
-        else if (pathArray.length == 4 && pathArray[2].equals("teams") ) {
-           
-        	tournamentDAO.deleteTeamFromTour(response, out, tourId, pathArray[3]);
-            
-        }else {
-            Extra.sendError(response, out, "Invalid request path");
-            return;
-        }
         
+	       try {
+			
+	    	   if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID))
+	           {
+	           	Matcher matcher = TournamentCompile.matcher(pathInfo);
+		           	if(matcher.find())
+		           	{
+		           		Integer tourId = Integer.parseInt(matcher.group(1));
+		           		Boolean status = tournamentDAO.deleteTournament(response, out, tourId);
+		           		if(status)
+		           			Extra.sendSuccess(response, out, "Tournament deleted successfully");
+		           		else Extra.sendError(response, out, "Tournament deletion failed");
+		           		
+		           	}
+		           	return;
+	           }
+	    	   
+	    	   if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID_TEAMS))
+	           {
+	           	Matcher matcher = TournamentIdTeams.matcher(pathInfo);
+		           	if(matcher.find())
+		           	{
+		           		Integer tourId = Integer.parseInt(matcher.group(1));
+		           		Boolean status = tournamentDAO.deleteAllTeamFromTour(tourId);
+		           		if(status)
+		           			Extra.sendSuccess(response, out, "All teams deleted from the tournament successfully");
+		           		else Extra.sendError(response, out, "No teams found for the provided tournament ID");
+		           		
+		           	}
+		           	return;
+	           }
+	    	   
+	    	   if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID_TEAMS_ID))
+	           {
+	           	Matcher matcher = TournamentIdTeamId.matcher(pathInfo);
+		           	if(matcher.find())
+		           	{
+		           		Integer tourId = Integer.parseInt(matcher.group(1));
+		           		Integer teamId = Integer.parseInt(matcher.group(2));
+		           		Boolean status = tournamentDAO.deleteTeamFromTour( tourId, teamId );
+		           		if(status)
+		           			Extra.sendSuccess(response, out, "Team ID "+ teamId +" deleted from the tournament successfully");
+		           		else Extra.sendError(response, out, "No team found for the provided tournament ID");
+		           		
+		           	}
+		           	return;
+	           }
+	    	   
+	    	   if(PathMatcherUtil.matchesPattern(pathInfo, TOURNAMENT_ID_FIXTURES))
+	           {
+		           	Matcher matcher = TournamentIdFixtures.matcher(pathInfo);
+		           	if(matcher.find())
+		           	{
+		           		Integer tourId = Integer.parseInt(matcher.group(1));
+		           		
+		           		Boolean status = fixtureDAO.deleteAllFixture( tourId );
+		           		if(status)
+		                    Extra.sendSuccess(response, out, "Fixtures Deleted Successfully");
+		           		else Extra.sendError(response, out, "No Data Found for the provided parameters");
+		           		
+		           	}
+		           	return;
+	           }
+	    	   
+	    	   
+	    	   
+	    	   
+	    	   
+	    	   Extra.sendError(response, out, "Enter a Valid Path");
+	    	   
+		} catch (Exception e) {
+			
+			e.printStackTrace();
+			Extra.sendError(response, out, Extra.ForeignKeyError(e.getMessage()));
+			
+		}
         
     }
     

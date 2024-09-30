@@ -65,69 +65,166 @@ public class TeamDAO {
     }
     
     
-    public boolean addTeamAndPlayers(String json) throws SQLException , Exception {
-    	
-    	Type type = new TypeToken<List<TeamVO>>(){}.getType();
-    	
-    	List<TeamVO> teams = new Gson().fromJson( json , type);
+    public boolean addTeamAndPlayers(String json, Boolean isPut) throws SQLException, Exception {
+
+        Type type = new TypeToken<List<TeamVO>>(){}.getType();
+        List<TeamVO> teams = new Gson().fromJson(json, type);
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
             conn.setAutoCommit(false);
-            
-            String insertTeamSQL = "INSERT INTO team (name, category , captain_id , vice_captain_id , wicket_keeper_id ) VALUES (?, ? , ? , ? , ?)";
-           
-            String insertTeamPlayerSQL = "INSERT INTO team_player (team_id, player_id) VALUES (?, ?)";
-            
-            try (PreparedStatement teamStmt = conn.prepareStatement(insertTeamSQL, Statement.RETURN_GENERATED_KEYS);
-                 PreparedStatement teamPlayerStmt = conn.prepareStatement(insertTeamPlayerSQL)) {
 
-                for ( TeamVO team : teams) {
-                    
-                	if(!team.canPost())
-                		throw new Exception("Check the input data");
+            String insertTeamSQL = "INSERT INTO team (name, category, captain_id, vice_captain_id, wicket_keeper_id) VALUES (?, ?, ?, ?, ?)";
+            String updateTeamSQL = "UPDATE team SET name = ?, category = ?, captain_id = ?, vice_captain_id = ?, wicket_keeper_id = ? WHERE team_id = ?";
+            String insertTeamPlayerSQL = "INSERT INTO team_player (team_id, player_id) VALUES (?, ?)";
+            String deleteTeamPlayerSQL = "DELETE FROM team_player WHERE team_id = ? AND player_id = ?";
+            String selectTeamPlayersSQL = "SELECT player_id FROM team_player WHERE team_id = ?";
+
+            try (PreparedStatement teamStmt = conn.prepareStatement(isPut ? updateTeamSQL : insertTeamSQL, Statement.RETURN_GENERATED_KEYS);
+                 PreparedStatement teamPlayerStmt = conn.prepareStatement(insertTeamPlayerSQL);
+                 PreparedStatement deletePlayerStmt = conn.prepareStatement(deleteTeamPlayerSQL);
+                 PreparedStatement selectPlayerStmt = conn.prepareStatement(selectTeamPlayersSQL)) {
+
+                for (TeamVO team : teams) {
                 	
+                	if(team.getTeamId() == null && isPut)
+                		throw new Exception("ID is required for team update");
+                		
                 	
+                    if (!team.canPost())
+                        throw new Exception("Check the input data");
+
                     teamStmt.setString(1, team.getName());
                     teamStmt.setString(2, team.getCategory());
                     teamStmt.setInt(3, team.getCaptainId());
                     teamStmt.setInt(4, team.getViceCaptainId());
                     teamStmt.setInt(5, team.getWicketKeeperId());
-                    teamStmt.executeUpdate();
-                    
-                    
-                    ResultSet rs = teamStmt.getGeneratedKeys();
-                    if (rs.next()) {
-                         team.setTeamId(rs.getInt(1));
+
+                    if (isPut) {
+                        teamStmt.setInt(6, team.getTeamId());
+                        teamStmt.executeUpdate();
+                    } else {
+                        teamStmt.executeUpdate();
+                        ResultSet rs = teamStmt.getGeneratedKeys();
+                        if (rs.next()) {
+                            team.setTeamId(rs.getInt(1)); 
+                        }
                     }
-                    
-                    if(team.getPlayersList().size() < 11)
-                    	throw new Exception("Add atleast 11 players to form a team");
-                    
-                    if(!team.getPlayersList().contains(team.getCaptainId()))
-                    	throw new Exception("Captain ID " + team.getCaptainId() + " is not in players list");
-                    
-                	if(!team.getPlayersList().contains(team.getViceCaptainId()))
-                		throw new Exception("Captain ID " + team.getViceCaptainId() + " is not in players list");
-                	
-            		if(!team.getPlayersList().contains(team.getWicketKeeperId()))
-            			throw new Exception("Captain ID " + team.getWicketKeeperId() + " is not in players list");
-                    
-            		if(team.getCaptainId() == team.getViceCaptainId())
-            			throw new Exception("Captain and Vice Captain cannot be same");
-                    
-                    for (Integer players : team.getPlayersList()) {
-                        
+
+                    List<Integer> existingPlayers = new ArrayList<>();
+                    if (isPut) {
+                        selectPlayerStmt.setInt(1, team.getTeamId());
+                        ResultSet rs = selectPlayerStmt.executeQuery();
+                        while (rs.next()) {
+                            existingPlayers.add(rs.getInt("player_id"));
+                        }
+
+                        for (Integer playerId : existingPlayers) {
+                            if (!team.getPlayersList().contains(playerId)) {
+                                deletePlayerStmt.setInt(1, team.getTeamId());
+                                deletePlayerStmt.setInt(2, playerId);
+                                deletePlayerStmt.executeUpdate();
+                            }
+                        }
+                    }
+
+                    if (team.getPlayersList().size() < 11)
+                        throw new Exception("Add at least 11 players to form a team");
+
+                    if (!team.getPlayersList().contains(team.getCaptainId()))
+                        throw new Exception("Captain ID " + team.getCaptainId() + " is not in players list");
+
+                    if (!team.getPlayersList().contains(team.getViceCaptainId()))
+                        throw new Exception("Vice Captain ID " + team.getViceCaptainId() + " is not in players list");
+
+                    if (!team.getPlayersList().contains(team.getWicketKeeperId()))
+                        throw new Exception("Wicket Keeper ID " + team.getWicketKeeperId() + " is not in players list");
+
+                    if (team.getCaptainId() == team.getViceCaptainId())
+                        throw new Exception("Captain and Vice Captain cannot be the same");
+
+                    for (Integer playerId : team.getPlayersList()) {
+                        if (isPut && existingPlayers.contains(playerId)) {
+                            continue;
+                        }
                         teamPlayerStmt.setInt(1, team.getTeamId());
-                        teamPlayerStmt.setInt(2, players);
+                        teamPlayerStmt.setInt(2, playerId);
                         teamPlayerStmt.executeUpdate();
                     }
                 }
 
                 conn.commit();
-                System.out.println("Data inserted successfully.");
+                System.out.println("Data inserted/updated successfully.");
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
             }
-    	
         }
         return true;
     }
+    
+    public boolean deleteTeamById(int teamId) throws SQLException {
+        String deleteSQL = "DELETE FROM team WHERE team_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement stmt = conn.prepareStatement(deleteSQL)) {
+
+            stmt.setInt(1, teamId);
+            
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("Team with team_id " + teamId + " deleted successfully.");
+                return true;
+            } else {
+                System.out.println("No team found with team_id " + teamId);
+                return false;
+            }
+        }
+    }
+    
+    public boolean deleteTeamPlayersByTeamId(int teamId) throws SQLException {
+        String deleteSQL = "DELETE FROM team_player WHERE team_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement stmt = conn.prepareStatement(deleteSQL)) {
+
+            stmt.setInt(1, teamId);
+            
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("Players associated with team_id " + teamId + " deleted successfully.");
+                return true;
+            } else {
+                System.out.println("No players found for team_id " + teamId);
+                return false;
+            }
+        }
+    }
+    
+    
+    public boolean deleteTeamPlayerByPlayerIdTeamId(Integer teamId , Integer playerId) throws SQLException {
+        String deleteSQL = "DELETE FROM team_player WHERE team_id = ? AND player_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement stmt = conn.prepareStatement(deleteSQL)) {
+
+            stmt.setInt(1, teamId);
+            stmt.setInt(2, playerId);
+            
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("Players associated with team_id " + teamId + " deleted successfully.");
+                return true;
+            } else {
+                System.out.println("No players found for team_id " + teamId);
+                return false;
+            }
+        }
+    }
+
+
+    
+
 }

@@ -32,15 +32,15 @@ public class PlayingXIVO {
         return fixture_id;
     }
 
-    public void setFixtureId(int fixtureId) {
+    public void setFixtureId(Integer fixtureId) {
         this.fixture_id = fixtureId;
     }
 
-    public int getPlayerId() {
+    public Integer getPlayerId() {
         return player_id;
     }
 
-    public void setPlayerId(int playerId) {
+    public void setPlayerId(Integer playerId) {
         this.player_id = playerId;
     }
 
@@ -52,11 +52,11 @@ public class PlayingXIVO {
         this.role = role;
     }
 
-    public int getRuns() {
+    public Integer getRuns() {
         return runs;
     }
 
-    public void setRuns(int runs) {
+    public void setRuns(Integer runs) {
         this.runs = runs;
     }
 
@@ -64,31 +64,31 @@ public class PlayingXIVO {
         return balls_faced;
     }
 
-    public void setBallsFaced(int ballsFaced) {
+    public void setBallsFaced(Integer ballsFaced) {
         this.balls_faced = ballsFaced;
     }
 
-    public int getFours() {
+    public Integer getFours() {
         return fours;
     }
 
-    public void setFours(int fours) {
+    public void setFours(Integer fours) {
         this.fours = fours;
     }
 
-    public int getSixes() {
+    public Integer getSixes() {
         return sixes;
     }
 
-    public void setSixes(int sixes) {
+    public void setSixes(Integer sixes) {
         this.sixes = sixes;
     }
 
-    public int getFifties() {
+    public Integer getFifties() {
         return fifties;
     }
 
-    public void setFifties(int fifties) {
+    public void setFifties(Integer fifties) {
         this.fifties = fifties;
     }
 
@@ -96,15 +96,15 @@ public class PlayingXIVO {
         return hundreds;
     }
 
-    public void setHundreds(int hundreds) {
+    public void setHundreds(Integer hundreds) {
         this.hundreds = hundreds;
     }
 
-    public int getWicketsTaken() {
+    public Integer getWicketsTaken() {
         return wickets_taken;
     }
 
-    public void setWicketsTaken(int wicketsTaken) {
+    public void setWicketsTaken(Integer wicketsTaken) {
         this.wickets_taken = wicketsTaken;
     }
 

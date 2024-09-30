@@ -1,19 +1,19 @@
 package utils;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import config.RedisConfig;
 import model.TournamentVO;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
 
 public class TournamentRedisUtil {
 	
-	private static final String TOURNAMENT_REDIS_PREFIX = "tournament:";
+	private static final String TOURNAMENT_REDIS_PREFIX = "tournaments:";
 	
 	
 	private static boolean isCached() {
@@ -28,10 +28,12 @@ public class TournamentRedisUtil {
 	
     public static void setTournaments(List<TournamentVO> tournaments) {
         try (Jedis jedis = RedisConfig.getJedis().getResource() ) {
-            for (TournamentVO tournament : tournaments) {
-                jedis.setex( TOURNAMENT_REDIS_PREFIX + tournament.getTourId() , 3600 , tournament.toJson());
-            }
-            System.out.println("All Data updated in redis");
+        	String json = new Gson().toJson(tournaments);
+        	if(json != null)
+        	{
+        		jedis.set( TOURNAMENT_REDIS_PREFIX + "all"  , json);
+        		System.out.println("All Data updated in redis");        		
+        	}
         }
     }
     
@@ -53,13 +55,14 @@ public class TournamentRedisUtil {
     	
         List<TournamentVO> tournaments = new ArrayList<>();
         try (Jedis jedis = RedisConfig.getJedis().getResource()) {
-            Set<String> keys = jedis.keys(TOURNAMENT_REDIS_PREFIX + "*");
-            for (String key : keys) {
-            	String tournamentJson = jedis.get(key);
-                TournamentVO tournament = TournamentVO.fromJson(tournamentJson);
-                tournaments.add(tournament);
-            }
-            System.out.println("All Data fetched from cache");
+            
+        	String json = jedis.get(TOURNAMENT_REDIS_PREFIX + "all");
+        	Type type = new TypeToken<List<TournamentVO>>() {}.getType();
+        	if(json != null)
+        	{
+        		tournaments = new Gson().fromJson(json, type);
+        		System.out.println("All Data fetched from cache");        		
+        	}
         }
         return tournaments;
     }

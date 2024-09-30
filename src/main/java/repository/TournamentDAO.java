@@ -1,14 +1,11 @@
 package repository;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import model.*;
 import utils.TournamentRedisUtil;
@@ -39,7 +36,10 @@ public class TournamentDAO {
     
     public List<TournamentVO> getAllTournaments() throws SQLException {
     	
-        List<TournamentVO> tournaments = new ArrayList<>();
+        List<TournamentVO> tournaments = TournamentRedisUtil.getTournaments();
+        
+        if(tournaments != null && tournaments.size() > 0)
+        	return tournaments;
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement stmt = conn.prepareStatement(GET_ALL_TOURNAMENT);
@@ -53,6 +53,9 @@ public class TournamentDAO {
                 tournament.setStatus(rs.getString("status"));
                 tournaments.add(tournament);
             }
+            
+            if(tournaments.size() > 0)
+            	TournamentRedisUtil.setTournaments(tournaments);
         }
         return tournaments;
     }
@@ -273,10 +276,10 @@ public class TournamentDAO {
     }
 	
 	
-	public void deleteTournament(HttpServletResponse response, PrintWriter out, String tourId) throws ServletException, IOException {
+	public Boolean deleteTournament(HttpServletResponse response, PrintWriter out, Integer tourId) throws Exception {
         if (tourId == null) {
             Extra.sendError(response, out, "Tournament ID is required");
-            return;
+            return false;
         }
 
         
@@ -284,70 +287,47 @@ public class TournamentDAO {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(DELETE_BY_TOUR)) {
 
-            pstmt.setInt(1, Integer.parseInt(tourId));
+            pstmt.setInt(1, tourId);
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
-
-                Extra.sendSuccess(response, out, "Tournament deleted successfully");
-                TournamentRedisUtil.deleteTournamentById(Integer.parseInt(tourId));
-                
-            } else {
-                Extra.sendError(response, out, "No tournament found with the provided ID");
+                return true;
             }
-        } catch (NumberFormatException e) {
-            Extra.sendError(response, out, "Invalid Tournament ID");
-        } catch (SQLException e) {
-            Extra.sendError(response, out, e.getMessage());
-            e.printStackTrace();
         }
+        return false;
     }
 
-    public void deleteAllTeamFromTour(HttpServletResponse response, PrintWriter out, String tourId) {
+    public Boolean deleteAllTeamFromTour( Integer tourId) throws Exception {
         
     	
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(DELETE_TOUR_TEAM)) {
 
-            pstmt.setInt(1, Integer.parseInt(tourId));
+            pstmt.setInt(1, tourId);
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
-            	TournamentRedisUtil.clearParticipatedTeamsById(Integer.parseInt(tourId));
-                Extra.sendSuccess(response, out, "All teams deleted from the tournament successfully");
-            } else {
-                Extra.sendError(response, out, "No teams found for the provided tournament ID");
+            	return true;   
             }
-        } catch (NumberFormatException e) {
-            Extra.sendError(response, out, "Invalid Tournament ID");
-        } catch (SQLException e) {
-            Extra.sendError(response, out, e.getMessage());
-            e.printStackTrace();
         }
+        return false;
     }
 
-    public void deleteTeamFromTour(HttpServletResponse response, PrintWriter out, String tourId, String teamId) {
+    public Boolean deleteTeamFromTour(Integer tourId, Integer teamId) throws Exception {
         
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(DELETE_TOURTEAM_BY_TEAMID)) {
 
-            pstmt.setInt(1, Integer.parseInt(tourId));
-            pstmt.setInt(2, Integer.parseInt(teamId));
+            pstmt.setInt(1, tourId);
+            pstmt.setInt(2, teamId);
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) {
-            	TournamentRedisUtil.deleteTeamFromTournament(Integer.parseInt(tourId) , Integer.parseInt(teamId));
-                Extra.sendSuccess(response, out, "Team deleted from the tournament successfully");
-            } else {
-                Extra.sendError(response, out, "No team found with the provided IDs");
-            }
-        } catch (NumberFormatException e) {
-            Extra.sendError(response, out, "Invalid Tournament or Team ID");
-        } catch (SQLException e) {
-            Extra.sendError(response, out, e.getMessage());
-            e.printStackTrace();
+            	return true;
+            } 
         }
+        return false;
     }
     
     

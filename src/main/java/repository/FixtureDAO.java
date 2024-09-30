@@ -1,18 +1,13 @@
 package repository;
 
-import java.io.PrintWriter;
 import java.sql.*;
 import java.util.*;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.json.JSONObject;
 import model.FixtureVO;
+import model.MatchDetailVO;
 import model.PlayingXIVO;
 import model.TeamVO;
 import model.VenueVO;
-import utils.FixtureRedisUtil;
-import controller.*;
 
 public class FixtureDAO {
 	
@@ -23,6 +18,7 @@ public class FixtureDAO {
     private static final String USER = "root";
     private static final String PASS = "";
     
+    private static MatchDetailDAO matchDetailDAO = new MatchDetailDAO();
     
  private boolean isVenuePresent(FixtureVO fixtureModel) {
     	
@@ -187,20 +183,36 @@ public class FixtureDAO {
         }
         return false;
     }
+    
+    public Integer getTournamentIdByFixtureId(int fixtureId) throws SQLException {
+        String query = "SELECT tour_id FROM fixture WHERE fixture_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            
+            stmt.setInt(1, fixtureId);
+            ResultSet rs = stmt.executeQuery();
+            
+            if (rs.next()) {
+                return rs.getInt("tour_id");
+            } else {
+                throw new SQLException("No tournament found for fixture ID: " + fixtureId);
+            }
+        }
+    }
+
 
     
-    public Boolean addManyFixture( List<FixtureVO> fixtureModelList, Integer tourId, String method) throws Exception {
+    public Boolean addManyFixture( List<FixtureVO> fixtureModelList, Integer tourId, Boolean isPut) throws Exception {
       
     	int totalRowsAffected = 0;
 
-        Boolean isPut = method.equalsIgnoreCase("PUT");
-        
-       
-        
+         
         String insertSql = "INSERT INTO fixture (team1_id, team2_id, venue_id, match_date, tour_id , round) VALUES (?, ?, ?, ?, ? , ?)";
         
         String updateSql = "UPDATE fixture SET team1_id = ?, team2_id = ?, venue_id = ?, match_date = ? , winner_id = ? , tour_id = ? , round = ? , status = ? WHERE fixture_id = ?";
-
+        
+        
         
         HashSet<String> matchVenue = new HashSet<>();
 
@@ -216,6 +228,7 @@ public class FixtureDAO {
             for (FixtureVO fm : fixtureModelList) {
             	if(isPut)
             	{
+            		
             		if(!isValidFixtureID(fm , conn))
             			throw new SQLException("Fixture ID " + fm.getFixtureId() + " is not a fixture");
             		if(!canUpdate(fm , conn))
@@ -235,6 +248,9 @@ public class FixtureDAO {
             	
                 for (FixtureVO fixtureModel : fixtureModelList) {
                 	
+                	if(isPut)
+                    	tourId = getTournamentIdByFixtureId(fixtureModel.getFixtureId());
+                	
                 	if(!checkTeamInTournament(fixtureModel.getTeam1Id() , tourId))
                 		throw new SQLException("Team 1 ID " + fixtureModel.getTeam1Id() + " is not in tournament");
                 	
@@ -246,6 +262,8 @@ public class FixtureDAO {
                 	
                     if (fixtureModel.getTeam1Id() == fixtureModel.getTeam2Id() )
                         throw new SQLException("Team 1 and Team 2 cannot be the same");
+                    
+                    
                     
                     if(isPut && !isValidTournament(tourId))
                     	throw new SQLException("Tour ID " + fixtureModel.getTourId() + " is not a tournament");
@@ -273,8 +291,8 @@ public class FixtureDAO {
                     pstmt.setInt(3, fixtureModel.getVenueId());
                     
                     pstmt.setString(4, fixtureModel.getMatchDate());
-                    if (method.equalsIgnoreCase("PUT")) {
-                    	pstmt.setObject(5,  (fixtureModel.getWinnerId() < 0) ? JSONObject.NULL : (int)fixtureModel.getWinnerId());
+                    if (isPut) {
+                    	pstmt.setObject(5,  fixtureModel.getWinnerId() );
                         pstmt.setInt(6, tourId);
                         
                         pstmt.setObject(7 , (fixtureModel.getRound() == null) ? JSONObject.NULL : fixtureModel.getRound());
@@ -290,6 +308,15 @@ public class FixtureDAO {
                         }
                     }
                     
+                    if(isPut)
+                    {
+                    	MatchDetailVO matchDetailVO = new MatchDetailVO();
+                    	matchDetailVO.setFixture_id(fixtureModel.getFixtureId());
+                    	matchDetailVO.setMan_of_the_match(fixtureModel.getManOfTheMatch());
+                    	matchDetailVO.setToss_win(fixtureModel.getTossWinnerId());
+                    	matchDetailVO.setToss_win_decision(fixtureModel.getTossWinnerDecision());
+                    	matchDetailDAO.insert( matchDetailVO, fixtureModel.getFixtureId(), isPut);
+                    }
                     
                     totalRowsAffected += pstmt.executeUpdate();
                     
@@ -307,65 +334,40 @@ public class FixtureDAO {
 
     
     
-    public void deleteAllFixture(HttpServletRequest request, HttpServletResponse response, PrintWriter out) {
+    public Boolean deleteAllFixture(int tourId)throws Exception {
        
-    	StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE");
-        
-    	List<Object> params = new ArrayList<>();
+    	StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE tour_id = ?");
 
-        String tourId = request.getParameter("tourId");
-        String fixtureId = request.getParameter("fixtureId");
-
-        boolean hasCondition = false;
-
-        if (tourId != null && !tourId.isEmpty()) {
-            sql.append(" tour_id = ?");
-            params.add(Integer.parseInt(tourId));
-            hasCondition = true;
-        }
-
-        if (fixtureId != null && !fixtureId.isEmpty()) {
-            if (hasCondition) {
-                sql.append(" AND");
-            }
-            sql.append(" fixture_id = ?");
-            params.add(Integer.parseInt(fixtureId));
-            hasCondition = true;
-        }
-
-        if (!hasCondition) {
-            Extra.sendError(response, out, "No valid parameters provided. At least one of tour_id or fixture_id is required.");
-            return;
-        }
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
-
+        	pstmt.setInt(1, tourId);
+        	
             int rowsAffected = pstmt.executeUpdate();
 
-            if (rowsAffected > 0) {
-            	
-            	if(fixtureId != null && FixtureRedisUtil.isCached())
-            		FixtureRedisUtil.deleteFixtureById(Integer.parseInt(fixtureId));
-            	
-            	if(tourId != null && FixtureRedisUtil.isCached())
-            		FixtureRedisUtil.deleteFixturesByTournamentId(Integer.parseInt(tourId));
-            	
-                Extra.sendSuccess(response, out, "Fixtures Deleted Successfully");
-            } else {
-                Extra.sendError(response, out, "No Data Found for the provided parameters");
-            }
-
-        } catch (NumberFormatException e) {
-            Extra.sendError(response, out, "Invalid parameter format: " + e.getMessage());
-        } catch (SQLException e) {
-            Extra.sendError(response, out, "Database error: " + e.getMessage());
-            e.printStackTrace();
+            if (rowsAffected > 0) 
+            	return true;
         }
+        return false;
+    }
+    
+    public Boolean deleteFixtureById(int fixtureId)throws Exception {
+        
+    	StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE fixture_id = ?");
+
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+
+        	pstmt.setInt(1, fixtureId);
+        	
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 0) 
+            	return true;
+        }
+        return false;
     }
 
     

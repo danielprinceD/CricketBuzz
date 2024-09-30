@@ -1,7 +1,7 @@
 package model;
 
 public class PlayerVO {
-    private int id;
+    private Integer id;
     private String name;
     private String role;
     private AddressVO address;
@@ -11,11 +11,11 @@ public class PlayerVO {
     private String bowlingStyle;
 
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

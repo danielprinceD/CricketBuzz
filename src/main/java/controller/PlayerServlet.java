@@ -81,15 +81,15 @@ public class PlayerServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) 
 	        throws ServletException, IOException {
-
-	    StringBuilder jsonString = new StringBuilder();
-	    BufferedReader reader = request.getReader();
-	    String line;
-	    while ((line = reader.readLine()) != null) {
-	        jsonString.append(line);
-	    }
-
-	    PrintWriter out = response.getWriter();
+		
+		PrintWriter out = response.getWriter();
+		String pathInfo = request.getPathInfo();
+		if(pathInfo == null)
+		{
+			
+		try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+			
+	    String jsonString = Extra.convertToJson(request);
 
 	    java.lang.reflect.Type listType = new TypeToken<List<PlayerVO>>() {}.getType();
 	    List<PlayerVO> playerList = new Gson().fromJson(jsonString.toString(), listType);
@@ -103,13 +103,13 @@ public class PlayerServlet extends HttpServlet {
 	    
 	    boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
 
-	    try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
 	        conn.setAutoCommit(false);
 
 	        for (PlayerVO player : playerList) {
 	            if (player.isValid()) {
 	                boolean success;
 	                if (isPut) {
+	                	
 	                	
 	                	success = playerDAO.updatePlayer(player);
 	                } else {
@@ -131,11 +131,14 @@ public class PlayerServlet extends HttpServlet {
 	        conn.commit();
 	        Extra.sendSuccess(response, out, "Players processed successfully.");
 	        
-	    } catch (SQLException e) {
-	        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-	        out.println("Database error: " + e.getMessage());
+	    } catch (Exception e) {
+	        Extra.sendError(response, out, e.getMessage());
 	        e.printStackTrace();
 	    }
+		return;
+		}
+		
+		Extra.sendError(response, out, "No URL Found");
 	    
 	}
 
