@@ -159,6 +159,9 @@ public class PlayerDAO {
 	             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 	             
 	            pstmt.setInt(1, playerId);
+	            
+	            
+	            
 	            int affectedRows = pstmt.executeUpdate();
 	            if(PlayerRedisUtil.isCached())
 	            	PlayerRedisUtil.deletePlayerById(playerId);
