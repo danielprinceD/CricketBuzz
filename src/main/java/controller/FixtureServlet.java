@@ -229,7 +229,7 @@ public class FixtureServlet extends HttpServlet {
 					Boolean status = overSummaryDAO.insert( overSummaryVOs , fixtureId);
 					
 					if(status)
-						Extra.sendError(response , out , "Over Summaries created successfully.");
+						Extra.sendSuccess(response , out , "Over Summaries created successfully.");
 					else 
 						Extra.sendError(response, response.getWriter(), "No records inserted.");
 				}
