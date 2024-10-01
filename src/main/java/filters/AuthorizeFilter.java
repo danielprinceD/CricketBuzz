@@ -1,20 +1,37 @@
 package filters;
 
 import java.io.IOException;
+import java.util.Map;
+
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
+
 import controller.Extra;
+import utils.AuthUtil;
 
 public class AuthorizeFilter extends HttpFilter implements Filter {
-       
+   
+	private Cookie getCookies(Cookie []cookies) {
+		if(cookies == null)
+			return null;
+		
+		for(Cookie cookie : cookies)
+			if(cookie.getName().equals("token"))
+				return cookie;
+		
+		return null;
+	}
    
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 		
@@ -23,18 +40,27 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 		
 		String method = req.getMethod();
 		
-		HttpSession session = req.getSession(false);
 		
-		if(session == null)
+		
+		Cookie cookie = getCookies(req.getCookies());
+		
+		
+		if(cookie == null)
 		{
-			Extra.sendError(res, res.getWriter() , "No session found. Please Login");
+			Extra.sendError(res, res.getWriter(), "Login to Continue");
 			return;
 		}
 		
+		String headerToken = cookie.getValue();
 		
-		String email = (String) session.getAttribute("email");
-		Integer id = (Integer) session.getAttribute("user_id");
-        String role = (String) session.getAttribute("role");
+		try {
+			
+		DecodedJWT decoded = AuthUtil.verifyToken(headerToken);
+		
+		
+		String id = decoded.getSubject();
+		String role = decoded.getClaim("role").asString();
+		
 		
         if(role.equalsIgnoreCase("ADMIN"))
         {
@@ -50,7 +76,7 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 				if(pathInfo.startsWith("/users"))
 				{
 					String[] pathArr = pathInfo.split("/");
-					if(pathArr.length == 2 && Integer.parseInt(pathArr[1]) == id)
+					if(pathArr.length == 2 && pathArr[1].equals(id))
 					{
 						chain.doFilter(request, response);
 						return;
@@ -59,7 +85,6 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 						Extra.sendError(res, res.getWriter(), "You don't have access");
 						return;
 					}
-					
 				}
 			}
 			if(method.equalsIgnoreCase("GET"))
@@ -69,7 +94,15 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 			}
 		}
 		
-		Extra.sendError(res, res.getWriter() , "Unauthorized Access");
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			Extra.sendError(res, res.getWriter(), e.getMessage());
+		}
+		
+		
+		Extra.sendError(res, res.getWriter(), "Unauthorized Access");
+		
 	}
 
 

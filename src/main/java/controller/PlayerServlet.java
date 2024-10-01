@@ -1,6 +1,5 @@
 package controller;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import com.google.gson.Gson;
@@ -8,12 +7,10 @@ import com.google.gson.reflect.TypeToken;
 import repository.*;
 import utils.PathMatcherUtil;
 import utils.PlayerRedisUtil;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.json.JSONObject;
 import model.*;
 import java.sql.*;
 import java.util.List;
@@ -22,15 +19,16 @@ import java.util.regex.Pattern;
 
 
 public class PlayerServlet extends HttpServlet {
-	
+	private static final long serialVersionUID = 1L;
+		
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
 	private static final String USER = "root";
 	private static final String PASS = "";
+	
 	PlayerDAO playerDAO = new PlayerDAO();
 	
 	private final String PLAYER_ID = "/([0-9]+)";
 	private final Pattern PLAYER_ID_COMPILE = Pattern.compile(PLAYER_ID);
-
 	
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

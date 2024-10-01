@@ -2,27 +2,27 @@ package model;
 
 public class AddressVO {
 	
-    private int address_id;
-    private String door_num;
+    private Integer addressId;
+    private String doorNum;
     private String street;
     private String city;
     private String state;
     private String nationality;
 
-    public int getAddressId() {
-        return address_id;
+    public Integer getAddressId() {
+        return addressId;
     }
 
-    public void setAddressId(int addressId) {
-        this.address_id = addressId;
+    public void setAddressId(Integer addressId) {
+        this.addressId = addressId;
     }
 
     public String getDoorNum() {
-        return door_num;
+        return doorNum;
     }
 
     public void setDoorNum(String doorNum) {
-        this.door_num = doorNum;
+        this.doorNum = doorNum;
     }
 
     public String getStreet() {

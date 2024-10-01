@@ -3,6 +3,7 @@ package controller;
 import java.io.BufferedReader;
 import java.io.IOException;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -20,6 +21,17 @@ public class LoginServlet extends HttpServlet {
 		userDAO = new UserDAO();
 	}
 	
+	private Cookie getCookies(Cookie cookies[]) {
+		
+		if(cookies == null)return null;
+		
+		for(Cookie cookie : cookies)
+			if(cookie.getName().equals("token"))
+				return cookie;
+		
+		return null;
+	}
+	
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		
@@ -31,9 +43,10 @@ public class LoginServlet extends HttpServlet {
         }
 		
 		try {
-			HttpSession session = request.getSession(false);
 			
-			if(session != null)
+			Cookie cookie = getCookies(request.getCookies());
+			
+			if(cookie != null)
 			{
 				Extra.sendError(response, response.getWriter(), "You are already logged in.");
 				return;
@@ -42,6 +55,7 @@ public class LoginServlet extends HttpServlet {
 			userDAO.login(request, response, response.getWriter(), jsonString);
 			
 		} catch (Exception e) {
+			e.printStackTrace();
 			Extra.sendError(response, response.getWriter(), e.getMessage());
 		}
 		

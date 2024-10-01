@@ -53,7 +53,7 @@ public class AddressDAO {
         }
     }
     
-    public boolean deleteAddress(int addressId) throws SQLException{
+    public boolean deleteAddress(int addressId) throws SQLException {
     	
     	String sql = "DELETE FROM address where address_id = ?";
         

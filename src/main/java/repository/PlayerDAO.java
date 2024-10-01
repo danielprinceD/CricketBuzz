@@ -2,9 +2,7 @@ package repository;
 
 import model.*;
 import utils.PlayerRedisUtil;
-
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerDAO {
@@ -106,7 +104,7 @@ public class PlayerDAO {
 	    	if(player.getId() == null)
 	    		throw new SQLException("Player ID must required");
 	    	
-	    	int addressId = getOldAddressId(player.getId());
+	    	Integer addressId = getOldAddressId(player.getId());
 	    	
 	    	if(addressId != player.getAddress().getAddressId())
 	    		throw new SQLException("You cannot change address_id");
@@ -181,7 +179,7 @@ public class PlayerDAO {
     	if(player != null)
     		return player;
         
-    	String sql = "SELECT P.id, P.name, P.role, A.address_id, A.door_num, A.street, A.city, A.state, A.nationality, P.gender, P.rating, P.batting_style, P.bowling_style FROM player AS P JOIN address AS A ON P.address_id = A.address_id WHERE P.id = ?";
+    	String sql = "SELECT P.id, P.name, P.role, A.address_id as addressId, A.door_num, A.street, A.city, A.state, A.nationality, P.gender, P.rating, P.batting_style, P.bowling_style FROM player AS P JOIN address AS A ON P.address_id = A.address_id WHERE P.id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -202,7 +200,7 @@ public class PlayerDAO {
 
                 AddressVO address = new AddressVO();
                 
-                address.setAddressId(rs.getInt("address_id"));
+                address.setAddressId(rs.getInt("addressId"));
                 address.setDoorNum(rs.getString("door_num"));
                 address.setStreet(rs.getString("street"));
                 address.setCity(rs.getString("city"));

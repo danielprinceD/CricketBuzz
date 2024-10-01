@@ -9,6 +9,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import javax.servlet.SessionCookieConfig;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -17,6 +20,7 @@ import org.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import model.*;
+import utils.AuthUtil;
 import utils.PasswordUtil;
 import controller.*;
 
@@ -199,9 +203,10 @@ public class UserDAO {
    public void login(HttpServletRequest request , HttpServletResponse response , PrintWriter out , StringBuilder jsonString ) throws IOException, NoSuchAlgorithmException {
     	
     	String sql = "SELECT  user_id , email, password, role FROM user WHERE email = ? AND password = ?";
-        
-        try (Connection connection = DriverManager.getConnection(DB_URL, USER, PASS);
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+    	
+    	try (Connection connection = DriverManager.getConnection(DB_URL, USER, PASS);
+           
+    		PreparedStatement statement = connection.prepareStatement(sql) ) {
        	 
        	 JsonObject jsonObject = com.google.gson.JsonParser.parseString(jsonString.toString()).getAsJsonObject();
        	 
@@ -225,26 +230,35 @@ public class UserDAO {
                 response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_OK);
                 
-                HttpSession session = request.getSession();
                 
-                session.setAttribute("user_id", id);
-                session.setAttribute("email", email);
-                session.setAttribute("role", role);
+                String generatedToken =  AuthUtil.generateToken( id+"", role);
+                Cookie cookie = new Cookie("token", generatedToken);
+                cookie.setSecure(false);
+                cookie.setPath("/");
                 
-                session.setMaxInactiveInterval(30 * 60);
+                response.addCookie(cookie); 
+                response.setHeader("token", generatedToken);
+                
+                JSONObject output = new JSONObject();
+                
+                output.put("message", "login successful");
+                output.put("token", generatedToken);
                 
                 
-                out.println("{\"message\":\" "+ role +" login successful\"}");
+                out.print(output.toString());
                 
                 return;
             } else {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid email or password");
             }
-        } catch (SQLException e) {
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error: " + e.getMessage());
+        } catch (Exception e) {
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
             e.printStackTrace();
         }
    
+    	
+    	
+    	
     	
     }
     
