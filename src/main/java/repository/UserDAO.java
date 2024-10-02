@@ -255,10 +255,6 @@ public class UserDAO {
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
             e.printStackTrace();
         }
-   
-    	
-    	
-    	
     	
     }
     

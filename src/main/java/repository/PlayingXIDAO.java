@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import model.*;
+import utils.AuthUtil;
 import utils.PlayingXIRedisUtil;
 import controller.*;
 
@@ -134,8 +135,13 @@ public class PlayingXIDAO {
         return playerExistsInOtherTeam;
     }
     
-    public Boolean updatePlaying11(List<PlayingXIVO> playing11List, Integer fixtureId) throws SQLException {
-        
+    public Boolean updatePlaying11( HttpServletRequest request ,List<PlayingXIVO> playing11List, Integer fixtureId) throws Exception {
+    	
+    	Integer tourId = new FixtureDAO().getTournamentIdByFixtureId(fixtureId);
+
+    	if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId)) 
+    		throw new Exception("You cannot modify another's resource");
+    	
     	String sql = "UPDATE playing_11 SET role = ?, runs = ?, balls_faced = ?, fours = ?, sixes = ?, fifties = ?, hundreds = ?, wickets_taken = ? "
                    + "WHERE fixture_id = ? AND player_id = ?";
 
@@ -341,13 +347,16 @@ public class PlayingXIDAO {
 	    }
 	
 	    
-	    public Boolean insertPlaying11(List<PlayingXIVO> playing11List, int fixtureId, int teamId) throws SQLException {
+	    public Boolean insertPlaying11(HttpServletRequest request ,List<PlayingXIVO> playing11List, int fixtureId, int teamId) throws Exception {
 	       
 	    	if (playing11List.size() > 11) {
 	            throw new SQLException("Playing XI should not be more than 11 players");
 	        } else if (playing11List.size() < 11) {
 	            throw new SQLException("Playing XI should not be less than 11 players");
 	        }
+	    	
+	    	if(!AuthUtil.isAuthorizedAdmin(request, "team", "team_id", teamId))
+	    		throw new Exception("You cannot modify another's resource");
 
 	        String sql = "INSERT INTO playing_11 (fixture_id, player_id, team_id, role) VALUES (?, ?, ?, ?)";
 

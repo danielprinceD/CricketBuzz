@@ -1,8 +1,6 @@
 package repository;
 
-import java.beans.Statement;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -13,12 +11,9 @@ import java.util.HashSet;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.json.JSONArray;
 import org.json.JSONObject;
-
-import com.google.gson.Gson;
-
 import model.CommentaryVO;
+import utils.AuthUtil;
 import utils.CommentaryRedisUtil;
 import controller.*;
 
@@ -28,11 +23,21 @@ public class CommentaryDAO {
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
     private static final String USER = "root";
     private static final String PASS = "";
+    private static FixtureDAO fixtureDAO = new FixtureDAO();
     
     protected final String COMMENTARIES_GET_QUERY = "SELECT commentary_id, fixture_id, over_count, ball, run_type, commentary_text, date_time, batter_id, bowler_id, catcher_id FROM commentary WHERE fixture_id = ?";
     
     
-    public Boolean insert( Integer fixtureId  , List<CommentaryVO> commentaryList) throws Exception {
+    public Boolean insert(HttpServletRequest request, Integer fixtureId  , List<CommentaryVO> commentaryList) throws Exception {
+    	
+    	Integer tourId = fixtureDAO.getTournamentIdByFixtureId(fixtureId);
+    	
+    	if(tourId == null)
+    		throw new Exception("Fixture Id is invalid");
+
+    	if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId))
+    		throw new Exception("You don't have permission to this resource");
+    	
     	String sql = "INSERT INTO commentary (fixture_id, over_count, ball, run_type, commentary_text, batter_id, bowler_id, catcher_id) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
      
@@ -84,7 +89,8 @@ public class CommentaryDAO {
 			        }
 			    }
 			} 
-
+			
+			
      	
          for (CommentaryVO tourModel : commentaryList) {
          	

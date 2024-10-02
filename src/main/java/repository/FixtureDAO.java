@@ -2,12 +2,18 @@ package repository;
 
 import java.sql.*;
 import java.util.*;
+
+import javax.servlet.http.HttpServletRequest;
+
 import org.json.JSONObject;
+
+import jakarta.ws.rs.core.Request;
 import model.FixtureVO;
 import model.MatchDetailVO;
 import model.PlayingXIVO;
 import model.TeamVO;
 import model.VenueVO;
+import utils.AuthUtil;
 import utils.FixtureRedisUtil;
 import utils.TeamRedisUtil;
 import utils.TournamentRedisUtil;
@@ -206,11 +212,12 @@ public class FixtureDAO {
 
 
     
-    public Boolean addManyFixture( List<FixtureVO> fixtureModelList, Integer tourId, Boolean isPut) throws Exception {
+    public Boolean addManyFixture(HttpServletRequest request ,List<FixtureVO> fixtureModelList, Integer tourId, Boolean isPut) throws Exception {
       
     	int totalRowsAffected = 0;
 
-         
+        
+    	
         String insertSql = "INSERT INTO fixture (team1_id, team2_id, venue_id, match_date, tour_id , round) VALUES (?, ?, ?, ?, ? , ?)";
         
         String updateSql = "UPDATE fixture SET team1_id = ?, team2_id = ?, venue_id = ?, match_date = ? , winner_id = ? , tour_id = ? , round = ? , status = ? WHERE fixture_id = ?";
@@ -226,7 +233,8 @@ public class FixtureDAO {
         		if (!isPut && !isValidTournament(tourId))
         			throw new SQLException("Tournament ID " + tourId + " is not found");
         		
-            
+        		if(!isPut && !AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId ))
+            		throw new Exception("You cannot modify other's resource");
 
             for (FixtureVO fm : fixtureModelList) {
             	if(isPut)
@@ -252,7 +260,11 @@ public class FixtureDAO {
                 for (FixtureVO fixtureModel : fixtureModelList) {
                 	
                 	if(isPut)
-                    	tourId = getTournamentIdByFixtureId(fixtureModel.getFixtureId());
+                	{
+                		tourId = getTournamentIdByFixtureId(fixtureModel.getFixtureId());
+                		if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId ))
+                    		throw new Exception("You cannot modify other's resource");
+                	}
                 	
                 	if(!checkTeamInTournament(fixtureModel.getTeam1Id() , tourId))
                 		throw new SQLException("Team 1 ID " + fixtureModel.getTeam1Id() + " is not in tournament");
@@ -337,10 +349,12 @@ public class FixtureDAO {
 
     
     
-    public Boolean deleteAllFixture(int tourId)throws Exception {
+    public Boolean deleteAllFixture(HttpServletRequest request ,Integer tourId)throws Exception {
        
     	StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE tour_id = ?");
-
+    	
+    	 if(!AuthUtil.isAuthorizedAdmin( request , "tournament", "tour_id", tourId))
+         	throw new Exception("You cannot modify other's resouce");
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -350,8 +364,7 @@ public class FixtureDAO {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected > 0) 
-            {
-            	
+            {	
             	TournamentRedisUtil.invalidateFixtures(tourId);
             	return true;
             }
@@ -359,10 +372,16 @@ public class FixtureDAO {
         return false;
     }
     
-    public Boolean deleteFixtureById(int fixtureId)throws Exception {
+    public Boolean deleteFixtureById(HttpServletRequest request , Integer fixtureId)throws Exception {
         
     	StringBuilder sql = new StringBuilder("DELETE FROM fixture WHERE fixture_id = ?");
-
+    	
+    	Integer tourId = getTournamentIdByFixtureId(fixtureId);
+    	if(tourId == null)
+    		throw new Exception("Invalid Fixture ID");
+    	
+    	if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId))
+    		throw new Exception("You cannot delete other's resources");
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -383,6 +402,7 @@ public class FixtureDAO {
     
     public List<FixtureVO> getFixtureByTournamentId(Integer tourId) throws SQLException {
         
+    	
     	
         StringBuilder sql = new StringBuilder("SELECT fixture_id, status , round ,team1_id, team2_id, winner_id , match_date FROM fixture WHERE tour_id = ?");
         

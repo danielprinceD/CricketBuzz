@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import com.google.gson.Gson;
 import repository.*;
+import utils.AuthUtil;
 import utils.PathMatcherUtil;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,7 +40,9 @@ public class TeamServlet extends HttpServlet {
     	String pathInfo = request.getPathInfo();
     	
     	try {
-			
+    		
+			if(pathInfo != null) {
+				
     		if(PathMatcherUtil.matchesPattern(pathInfo, TEAM_ID))
     		{
     			Matcher matcher = TEAM_ID_COMPILE.matcher(pathInfo);
@@ -54,6 +57,8 @@ public class TeamServlet extends HttpServlet {
     			}
     			return;
     		}
+    		
+			}
     		
     		Extra.sendError(response, out, "Enter valid Path");
     		
@@ -78,7 +83,9 @@ public class TeamServlet extends HttpServlet {
     		if(pathInfo == null)
     		{
     			Boolean isPut = request.getMethod().equalsIgnoreCase("PUT");
-    			Boolean status =  teamDAO.addTeamAndPlayers(body , isPut);
+    			
+    			Boolean status =  teamDAO.addTeamAndPlayers( request ,body , isPut);
+    			
     			if(status)
     			{
     				if(isPut)
@@ -127,7 +134,7 @@ public class TeamServlet extends HttpServlet {
     			if(matcher.find())
     			{
     				Integer teamId = Integer.parseInt(matcher.group(1));
-    				Boolean status = teamDAO.deleteTeamById(teamId);
+    				Boolean status = teamDAO.deleteTeamById( request ,teamId);
     				
     				if(status)
     					Extra.sendSuccess(response, out, "Team Deleted");
@@ -144,7 +151,7 @@ public class TeamServlet extends HttpServlet {
     			if(matcher.find())
     			{
     				Integer teamId = Integer.parseInt(matcher.group(1));
-    				Boolean status = teamDAO.deleteTeamPlayersByTeamId(teamId);
+    				Boolean status = teamDAO.deleteTeamPlayersByTeamId(request , teamId);
     				
     				if(status)
     					Extra.sendSuccess(response, out, "Team Players Deleted");
@@ -164,7 +171,7 @@ public class TeamServlet extends HttpServlet {
     				Integer teamId = Integer.parseInt(matcher.group(1));
     				Integer playerId = Integer.parseInt(matcher.group(2));
     				
-    				Boolean status = teamDAO.deleteTeamPlayerByPlayerIdTeamId(teamId, playerId);
+    				Boolean status = teamDAO.deleteTeamPlayerByPlayerIdTeamId(request , teamId, playerId);
     				
     				if(status)
     					Extra.sendSuccess(response, out, "Team Player with ID " + playerId + " is Deleted");

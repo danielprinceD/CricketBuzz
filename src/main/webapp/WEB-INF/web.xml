@@ -155,7 +155,6 @@
 			
 			<filter-name>AuthorizeFilter</filter-name>
 			<url-pattern>/tournaments/*</url-pattern>
-			<url-pattern>/teams/*</url-pattern>
 			<url-pattern>/fixtures/*</url-pattern>
 			<url-pattern>/players/*</url-pattern>
 			 <url-pattern>/playing-11s</url-pattern>
@@ -163,9 +162,9 @@
 			 <url-pattern>/commentaries/*</url-pattern>
 			 <url-pattern>/match-details</url-pattern>
 			  <url-pattern>/user/logout</url-pattern>
+			  <url-pattern>/teams/*</url-pattern>
 			 
 		
 		</filter-mapping>
-   
     
 </web-app >

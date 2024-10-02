@@ -15,11 +15,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import controller.*;
 import model.OverSummaryVO;
+import utils.AuthUtil;
 
 public class OverSummaryDAO {
 	private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
     private static final String USER = "root";
     private static final String PASS = "";
+    private static FixtureDAO fixtureDAO = new FixtureDAO();
+
     
     private final String OVER_SUMMARY_RETRIEVE = "SELECT os.fixture_id, os.batter1_id , os.batter2_id , os.bowler_id , os.over_count, os.run, os.wkt, p1.name AS batter1_name, p2.name AS batter2_name, p3.name AS bowler_name FROM over_summary os JOIN player p1 ON os.batter1_id = p1.id JOIN player p2 ON os.batter2_id = p2.id JOIN player p3 ON os.bowler_id = p3.id WHERE os.fixture_id = ?";
     
@@ -192,7 +195,9 @@ public class OverSummaryDAO {
     }
     
     
-    public Boolean insert( List<OverSummaryVO> overSummaryVOs  , Integer fixtureId) throws Exception {
+    public Boolean insert( HttpServletRequest request ,List<OverSummaryVO> overSummaryVOs  , Integer fixtureId) throws Exception {
+    	
+    	
     	
     	String sql = "INSERT INTO over_summary (fixture_id, over_count, run, wkt , batter1_id , batter2_id , bowler_id ) VALUES (?, ?, ?, ? , ? , ? , ? )";
 
@@ -204,6 +209,11 @@ public class OverSummaryDAO {
             
             if(!valid(fixtureId, "fixture", "fixture_id"))
             	throw new Exception("Fixture ID " + fixtureId + " is not a fixture");
+            
+            Integer tourId = fixtureDAO.getTournamentIdByFixtureId(fixtureId);
+        	
+            if(!AuthUtil.isAuthorizedAdmin(request , "tournament", "tour_id", tourId))
+            	throw new Exception("You cannot modify other's resource");
 
             for (OverSummaryVO overSummary : overSummaryVOs) {
             	

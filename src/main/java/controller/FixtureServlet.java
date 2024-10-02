@@ -22,20 +22,17 @@ public class FixtureServlet extends HttpServlet {
     private static CommentaryDAO commentaryDAO;
     private static OverSummaryDAO overSummaryDAO;
     private static PlayingXIDAO playingXIDAO;
-    private static MatchDetailDAO matchDetailDAO;
     
     private final String FIXTURE_ID = "/([0-9]+)";
     private final String FIXTURE_ID_TEAM_ID_PLAYING_11 = "/([0-9]+)/teams/([0-9]+)/playing11s";
     private final String FIXTURE_ID_PLAYING_11 = "/([0-9]+)/playing11s";
     private final String COMMENTARY = "/([0-9]+)/commentaries";
     private final String OVER_SUMMARIES = "/([0-9]+)/over-summaries";
-    private final String FIXTURE_ID_MATCH_DETAILS = "/([0-9]+)/match-details";
     
     private final Pattern FIXTURE_ID_COMPILE = Pattern.compile(FIXTURE_ID);
     private final Pattern FIXTURE_ID_TEAM_ID_PLAYING_11_COMPILE = Pattern.compile(FIXTURE_ID_TEAM_ID_PLAYING_11);
     private final Pattern COMMENTARIES_COMPILE = Pattern.compile(COMMENTARY);
     private final Pattern OVER_SUMMARIES_COMPILE = Pattern.compile(OVER_SUMMARIES);
-    private final Pattern FIXTURE_ID_MATCH_DETAILS_COMPILE = Pattern.compile(FIXTURE_ID_MATCH_DETAILS);
     private final Pattern FIXTURE_ID_PLAYING_11_COMPILE = Pattern.compile(FIXTURE_ID_PLAYING_11);
     
     @Override
@@ -44,7 +41,6 @@ public class FixtureServlet extends HttpServlet {
     	commentaryDAO = new CommentaryDAO();
     	overSummaryDAO = new OverSummaryDAO();
     	playingXIDAO = new PlayingXIDAO();
-    	matchDetailDAO = new MatchDetailDAO();
     }
     
     @Override
@@ -147,7 +143,7 @@ public class FixtureServlet extends HttpServlet {
 			{
 				java.lang.reflect.Type fixtureListType = new TypeToken<List<FixtureVO>>() {}.getType();
 				List<FixtureVO> fixtureModelList = new Gson().fromJson( jsonString.toString() , fixtureListType );
-				Boolean status =  fixtureDAO.addManyFixture(fixtureModelList, null, isPut);
+				Boolean status =  fixtureDAO.addManyFixture( request,fixtureModelList, null, isPut);
 				
 				if(status)
 					Extra.sendSuccess(response, out, "Fixtures Updated Successfully");
@@ -167,7 +163,7 @@ public class FixtureServlet extends HttpServlet {
 					Integer fixtureId = Integer.parseInt(matcher.group(1));
 					Type listType = new TypeToken<List<PlayingXIVO>>() {}.getType();
 			        List<PlayingXIVO> playing11List = new Gson().fromJson(jsonString.toString(), listType);
-			        Boolean status = playingXIDAO.updatePlaying11(playing11List, fixtureId);
+			        Boolean status = playingXIDAO.updatePlaying11( request,playing11List, fixtureId);
 			        if(status)
 			        	Extra.sendSuccess(response, response.getWriter(), "Updated Successfully");
 			        else 
@@ -187,7 +183,7 @@ public class FixtureServlet extends HttpServlet {
 					Integer fixtureId = Integer.parseInt(matcher.group(1));
 					Integer teamId = Integer.parseInt(matcher.group(2));
 					
-					Boolean status =  playingXIDAO.insertPlaying11(fixtureModelList, fixtureId , teamId );
+					Boolean status =  playingXIDAO.insertPlaying11(request , fixtureModelList, fixtureId , teamId );
 					
 					if(status)
 						Extra.sendSuccess(response, out, "Playing 11 Inserted Successfully");
@@ -197,24 +193,24 @@ public class FixtureServlet extends HttpServlet {
 				return;
 			}
 			
-			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID_MATCH_DETAILS))
-			{
-				Matcher matcher = FIXTURE_ID_MATCH_DETAILS_COMPILE.matcher(pathInfo);
-				
-				if(matcher.find())
-				{
-					
-					
-					MatchDetailVO matchDetails = new Gson().fromJson( jsonString.toString() , MatchDetailVO.class);
-					
-					Integer fixtureId = Integer.parseInt(matcher.group(1));
-					Boolean status = matchDetailDAO.insert(matchDetails ,  fixtureId , isPut);
-					if(status)
-						Extra.sendSuccess(response, out, "Match Details inserted successfully");
-					else Extra.sendError(response, out, "Data Failed to Insert");
-				}
-				return;
-			}
+//			if(PathMatcherUtil.matchesPattern(pathInfo, FIXTURE_ID_MATCH_DETAILS))
+//			{
+//				Matcher matcher = FIXTURE_ID_MATCH_DETAILS_COMPILE.matcher(pathInfo);
+//				
+//				if(matcher.find())
+//				{
+//					
+//					
+//					MatchDetailVO matchDetails = new Gson().fromJson( jsonString.toString() , MatchDetailVO.class);
+//					
+//					Integer fixtureId = Integer.parseInt(matcher.group(1));
+//					Boolean status = matchDetailDAO.insert(matchDetails ,  fixtureId , isPut);
+//					if(status)
+//						Extra.sendSuccess(response, out, "Match Details inserted successfully");
+//					else Extra.sendError(response, out, "Data Failed to Insert");
+//				}
+//				return;
+//			}
 			
 			if(PathMatcherUtil.matchesPattern(pathInfo, OVER_SUMMARIES))
 			{
@@ -226,7 +222,7 @@ public class FixtureServlet extends HttpServlet {
 					java.lang.reflect.Type overSummaryType = new TypeToken<List<OverSummaryVO>>() {}.getType();
 					List<OverSummaryVO> overSummaryVOs = new Gson().fromJson( jsonString.toString() , overSummaryType );
 					
-					Boolean status = overSummaryDAO.insert( overSummaryVOs , fixtureId);
+					Boolean status = overSummaryDAO.insert(request , overSummaryVOs , fixtureId);
 					
 					if(status)
 						Extra.sendSuccess(response , out , "Over Summaries created successfully.");
@@ -245,7 +241,7 @@ public class FixtureServlet extends HttpServlet {
 					java.lang.reflect.Type commentaryType = new TypeToken<List<CommentaryVO>>() {}.getType();
 					List<CommentaryVO> commentaryVOs = new Gson().fromJson( jsonString.toString() , commentaryType );
 					
-					Boolean status = commentaryDAO.insert(fixtureId, commentaryVOs);
+					Boolean status = commentaryDAO.insert(request, fixtureId, commentaryVOs);
 					if(status)
 						Extra.sendSuccess(response, out, "Commentaries inserted Successfully");
 					else Extra.sendError(response, out, "Failed to add commentaries");
@@ -281,7 +277,7 @@ public class FixtureServlet extends HttpServlet {
 				{
 					Integer fixtureId = Integer.parseInt(matcher.group(1));
 					
-					Boolean status = fixtureDAO.deleteFixtureById(fixtureId);
+					Boolean status = fixtureDAO.deleteFixtureById( request ,fixtureId);
 					if(status)
 						Extra.sendError(response, out, "Fixture " + fixtureId  + " deleted");
 					else 

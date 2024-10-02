@@ -7,10 +7,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
+import jakarta.ws.rs.core.Request;
 import model.PlayerVO;
 import model.TeamVO;
+import utils.AuthUtil;
 import utils.TeamRedisUtil;
 
 public class TeamDAO {
@@ -70,30 +76,40 @@ public class TeamDAO {
     }
     
     
-    public boolean addTeamAndPlayers(String json, Boolean isPut) throws SQLException, Exception {
+    public boolean addTeamAndPlayers(HttpServletRequest request , String json, Boolean isPut) throws SQLException, Exception {
 
+    	
         Type type = new TypeToken<List<TeamVO>>(){}.getType();
         List<TeamVO> teams = new Gson().fromJson(json, type);
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
             conn.setAutoCommit(false);
 
-            String insertTeamSQL = "INSERT INTO team (name, category, captain_id, vice_captain_id, wicket_keeper_id) VALUES (?, ?, ?, ?, ?)";
+            String insertTeamSQL = "INSERT INTO team (name, category, captain_id, vice_captain_id, wicket_keeper_id , created_by ) VALUES (?, ?, ?, ?, ? , ?)";
             String updateTeamSQL = "UPDATE team SET name = ?, category = ?, captain_id = ?, vice_captain_id = ?, wicket_keeper_id = ? WHERE team_id = ?";
             String insertTeamPlayerSQL = "INSERT INTO team_player (team_id, player_id) VALUES (?, ?)";
             String deleteTeamPlayerSQL = "DELETE FROM team_player WHERE team_id = ? AND player_id = ?";
             String selectTeamPlayersSQL = "SELECT player_id FROM team_player WHERE team_id = ?";
 
-            try (PreparedStatement teamStmt = conn.prepareStatement(isPut ? updateTeamSQL : insertTeamSQL, Statement.RETURN_GENERATED_KEYS);
+            try (PreparedStatement teamStmt = conn.prepareStatement(isPut ? updateTeamSQL : insertTeamSQL, Statement.RETURN_GENERATED_KEYS );
                  PreparedStatement teamPlayerStmt = conn.prepareStatement(insertTeamPlayerSQL);
                  PreparedStatement deletePlayerStmt = conn.prepareStatement(deleteTeamPlayerSQL);
                  PreparedStatement selectPlayerStmt = conn.prepareStatement(selectTeamPlayersSQL)) {
-
+            	
+            	String userIdStr = AuthUtil.getUserId(request);
+            	
+            	if(userIdStr == null)throw new Exception("Not a Valid user");
+            	
+            	Integer userId = Integer.parseInt(userIdStr);
+            	
                 for (TeamVO team : teams) {
+                	
                 	
                 	if(team.getTeamId() == null && isPut)
                 		throw new Exception("ID is required for team update");
-                		
+                	
+                	if(isPut && !AuthUtil.isAuthorizedAdmin(request, "team", "team_id" , team.getTeamId() ))
+                		throw new Exception("You cannot modify another's resource");
                 	
                     if (!team.canPost())
                         throw new Exception("Check the input data");
@@ -108,13 +124,15 @@ public class TeamDAO {
                         teamStmt.setInt(6, team.getTeamId());
                         teamStmt.executeUpdate();
                     } else {
+                    	teamStmt.setInt(6, userId);
                         teamStmt.executeUpdate();
                         ResultSet rs = teamStmt.getGeneratedKeys();
                         if (rs.next()) {
                             team.setTeamId(rs.getInt(1)); 
                         }
                     }
-
+                    
+                    
                     List<Integer> existingPlayers = new ArrayList<>();
                     if (isPut) {
                         selectPlayerStmt.setInt(1, team.getTeamId());
@@ -171,9 +189,13 @@ public class TeamDAO {
         return true;
     }
     
-    public boolean deleteTeamById(Integer teamId) throws SQLException {
-        String deleteSQL = "DELETE FROM team WHERE team_id = ?";
-
+    public boolean deleteTeamById( HttpServletRequest request , Integer teamId) throws Exception {
+    	
+    	if(!AuthUtil.isAuthorizedAdmin(request, "team", "team_id", teamId ))
+    		throw new Exception("You cannot modify another's resource");
+    	
+    	String deleteSQL = "DELETE FROM team WHERE team_id = ?";
+        
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement stmt = conn.prepareStatement(deleteSQL)) {
 
@@ -192,7 +214,11 @@ public class TeamDAO {
         }
     }
     
-    public boolean deleteTeamPlayersByTeamId(int teamId) throws SQLException {
+    public boolean deleteTeamPlayersByTeamId(HttpServletRequest request , int teamId) throws Exception {
+    	
+    	if(!AuthUtil.isAuthorizedAdmin(request, "team", "team_id", teamId ))
+    		throw new Exception("You cannot modify another's resource");
+    	
         String deleteSQL = "DELETE FROM team_player WHERE team_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -214,7 +240,11 @@ public class TeamDAO {
     }
     
     
-    public boolean deleteTeamPlayerByPlayerIdTeamId(Integer teamId , Integer playerId) throws SQLException {
+    public boolean deleteTeamPlayerByPlayerIdTeamId( HttpServletRequest request ,Integer teamId , Integer playerId) throws Exception {
+    	
+    	if(!AuthUtil.isAuthorizedAdmin(request, "team", "team_id", teamId ))
+    		throw new Exception("You cannot modify another's resource");
+    	
         String deleteSQL = "DELETE FROM team_player WHERE team_id = ? AND player_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);

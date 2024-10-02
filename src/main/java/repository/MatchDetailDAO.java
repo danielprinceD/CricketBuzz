@@ -21,7 +21,11 @@ public class MatchDetailDAO {
     private static final String USER = "root";
     private static final String PASS = "";
 	
-	private Boolean valid(int value, String table, String field) {
+	private Boolean valid(Integer value, String table, String field) {
+		
+		if(value == null)
+			return true;
+		
         String sql = "SELECT COUNT(*) FROM " + table + " WHERE " + field + " = ?";
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -59,7 +63,10 @@ public class MatchDetailDAO {
         return false; 
     }
 
-    private boolean isPlayerInFixture(int playerId, int fixtureId, Connection conn) throws SQLException {
+    private boolean isPlayerInFixture(Integer playerId, int fixtureId, Connection conn) throws SQLException {
+    	
+    	if(playerId == null)return true;
+    	
         String sql = "SELECT COUNT(*) FROM playing_11 WHERE fixture_id = ? AND player_id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, fixtureId);
@@ -106,7 +113,7 @@ public class MatchDetailDAO {
     	String sql;
         if(isPut)
         {
-        	sql = "UPDATE match_details SET toss_win = ? , man_of_the_match = ? , toss_win_decision = ? WHERE fixture_id = ?";
+        	sql = "INSERT INTO match_details (fixture_id, toss_win, man_of_the_match, toss_win_decision) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE toss_win = VALUES(toss_win), man_of_the_match = VALUES(man_of_the_match), toss_win_decision = VALUES(toss_win_decision)";
         }
         else {
         	sql = "INSERT INTO match_details (toss_win, man_of_the_match, toss_win_decision , fixture_id ) "
@@ -134,10 +141,10 @@ public class MatchDetailDAO {
             	if(!isPlayerInFixture(matchDetailModel.getMan_of_the_match() , fixtureId , conn))
             		throw new Exception("Man of the match ID " + matchDetailModel.getMan_of_the_match() + " is not in playing 11 for this fixture");
             	
-                pstmt.setInt(1, matchDetailModel.getToss_win());
-                pstmt.setInt(2, matchDetailModel.getMan_of_the_match());
-                pstmt.setString(3, matchDetailModel.getToss_win_decision());
-                pstmt.setInt(4, fixtureId);
+            	pstmt.setInt(1, fixtureId);
+                pstmt.setObject(2, matchDetailModel.getToss_win());
+                pstmt.setObject(3, matchDetailModel.getMan_of_the_match());
+                pstmt.setObject(4, matchDetailModel.getToss_win_decision());
 
         	int rowsAffected = pstmt.executeUpdate();
             

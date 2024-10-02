@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 public class TournamentVO {
     private Integer tourId;
     private String name;
+    private String createdBy;
     private String startDate;
     private String endDate;
     private String matchCategory;

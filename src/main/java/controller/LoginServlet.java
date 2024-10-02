@@ -44,13 +44,13 @@ public class LoginServlet extends HttpServlet {
 		
 		try {
 			
-			Cookie cookie = getCookies(request.getCookies());
-			
-			if(cookie != null)
-			{
-				Extra.sendError(response, response.getWriter(), "You are already logged in.");
-				return;
-			}
+//			Cookie cookie = getCookies(request.getCookies());
+//			
+//			if(cookie != null)
+//			{
+//				Extra.sendError(response, response.getWriter(), "You are already logged in.");
+//				return;
+//			}
 			
 			userDAO.login(request, response, response.getWriter(), jsonString);
 			

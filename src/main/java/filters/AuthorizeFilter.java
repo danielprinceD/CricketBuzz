@@ -19,48 +19,27 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 import controller.Extra;
 import utils.AuthUtil;
+import utils.CookiesUtil;
 
 public class AuthorizeFilter extends HttpFilter implements Filter {
    
-	private Cookie getCookies(Cookie []cookies) {
-		if(cookies == null)
-			return null;
-		
-		for(Cookie cookie : cookies)
-			if(cookie.getName().equals("token"))
-				return cookie;
-		
-		return null;
-	}
-   
+
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 		
 		HttpServletRequest req = (HttpServletRequest)request;
 		HttpServletResponse res = (HttpServletResponse)response;
 		
 		String method = req.getMethod();
-		
-		
-		
-		Cookie cookie = getCookies(req.getCookies());
-		
-		
-		if(cookie == null)
-		{
-			Extra.sendError(res, res.getWriter(), "Login to Continue");
-			return;
-		}
-		
-		String headerToken = cookie.getValue();
-		
+
 		try {
-			
-		DecodedJWT decoded = AuthUtil.verifyToken(headerToken);
 		
+		Map<String, String> details = AuthUtil.getDetails(req);
 		
-		String id = decoded.getSubject();
-		String role = decoded.getClaim("role").asString();
+		if(details == null)
+			throw new Exception("You're not authorized");
 		
+		String id = details.get("userId");
+		String role = details.get("role");
 		
         if(role.equalsIgnoreCase("ADMIN"))
         {
@@ -98,34 +77,13 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 		catch (Exception e) {
 			e.printStackTrace();
 			Extra.sendError(res, res.getWriter(), e.getMessage());
+			return;
 		}
 		
-		
-		Extra.sendError(res, res.getWriter(), "Unauthorized Access");
+		Extra.sendError(res, res.getWriter() , "Unauthorized Access");
 		
 	}
 
 
 }
 
-
-/*   <filter>
-			<filter-name>AuthorizeFilter</filter-name>
-			<filter-class>filters.AuthorizeFilter</filter-class>
-		</filter>
-		
-		<filter-mapping>
-			
-			<filter-name>AuthorizeFilter</filter-name>
-			<url-pattern>/tournaments/*</url-pattern>
-			<url-pattern>/teams/*</url-pattern>
-			<url-pattern>/fixtures/*</url-pattern>
-			<url-pattern>/players/*</url-pattern>
-			 <url-pattern>/playing-11s</url-pattern>
-			 <url-pattern>/over_summary</url-pattern>
-			 <url-pattern>/commentaries/*</url-pattern>
-			 <url-pattern>/match-details</url-pattern>
-			  <url-pattern>/user/logout</url-pattern>
-			 
-		
-		</filter-mapping>  */

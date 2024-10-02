@@ -148,7 +148,7 @@ public class TournamentServlet extends HttpServlet {
 			TypeToken<List<TournamentVO>> token = new TypeToken<List<TournamentVO>>() {};
 	        List<TournamentVO> tournamentsVO = new Gson().fromJson(jsonString, token.getType());
 	        
-	        Boolean status = tournamentDAO.insertOrUpdateData(tournamentsVO, isPut);
+	        Boolean status = tournamentDAO.insertOrUpdateData( request ,tournamentsVO, isPut);
 	        
 	        if(status)
 	        {
@@ -182,7 +182,7 @@ public class TournamentServlet extends HttpServlet {
                 
         		Integer tournamentId = Integer.parseInt(matcher.group(1));
         		
-        			Boolean status = fixtureDAO.addManyFixture( fixtureModelList , tournamentId , false);
+        			Boolean status = fixtureDAO.addManyFixture(request , fixtureModelList , tournamentId , false);
 				
         		
         		if(status)
@@ -229,7 +229,7 @@ public class TournamentServlet extends HttpServlet {
 		           	if(matcher.find())
 		           	{
 		           		Integer tourId = Integer.parseInt(matcher.group(1));
-		           		Boolean status = tournamentDAO.deleteTournament(response, out, tourId);
+		           		Boolean status = tournamentDAO.deleteTournament(request, out, tourId);
 		           		if(status)
 		           			Extra.sendSuccess(response, out, "Tournament deleted successfully");
 		           		else Extra.sendError(response, out, "Tournament deletion failed");
@@ -244,7 +244,7 @@ public class TournamentServlet extends HttpServlet {
 		           	if(matcher.find())
 		           	{
 		           		Integer tourId = Integer.parseInt(matcher.group(1));
-		           		Boolean status = tournamentDAO.deleteAllTeamFromTour(tourId);
+		           		Boolean status = tournamentDAO.deleteAllTeamFromTour( request ,tourId);
 		           		if(status)
 		           			Extra.sendSuccess(response, out, "All teams deleted from the tournament successfully");
 		           		else Extra.sendError(response, out, "No teams found for the provided tournament ID");
@@ -260,7 +260,7 @@ public class TournamentServlet extends HttpServlet {
 		           	{
 		           		Integer tourId = Integer.parseInt(matcher.group(1));
 		           		Integer teamId = Integer.parseInt(matcher.group(2));
-		           		Boolean status = tournamentDAO.deleteTeamFromTour( tourId, teamId );
+		           		Boolean status = tournamentDAO.deleteTeamFromTour( request,tourId, teamId );
 		           		if(status)
 		           			Extra.sendSuccess(response, out, "Team ID "+ teamId +" deleted from the tournament successfully");
 		           		else Extra.sendError(response, out, "No team found for the provided tournament ID");
@@ -276,7 +276,7 @@ public class TournamentServlet extends HttpServlet {
 		           	{
 		           		Integer tourId = Integer.parseInt(matcher.group(1));
 		           		
-		           		Boolean status = fixtureDAO.deleteAllFixture( tourId );
+		           		Boolean status = fixtureDAO.deleteAllFixture( request , tourId );
 		           		if(status)
 		                    Extra.sendSuccess(response, out, "Fixtures Deleted Successfully");
 		           		else Extra.sendError(response, out, "No Data Found for the provided parameters");

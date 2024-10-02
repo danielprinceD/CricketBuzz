@@ -5,8 +5,11 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import model.*;
+import utils.AuthUtil;
 import utils.TeamRedisUtil;
 import utils.TournamentRedisUtil;
 import controller.*;
@@ -26,7 +29,7 @@ public class TournamentDAO {
     private static String GET_TOURNAMENT_BY_ID = "SELECT * FROM tournament WHERE tour_id = ?";
     private static String TEAMS_BY_TOURNAMENT_ID = "SELECT T.team_id,T.name , TT.points, TT.net_run_rate FROM tournament_team TT JOIN team T ON TT.team_id = T.team_id WHERE TT.tour_id = ?";
     private static String ADD_TOURNAMENT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season, status) VALUES (?, ?, ?, ?, ?, ?)";
-    private static String INSERT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season , status) VALUES (?, ?, ?, ?, ? , ? )";
+    private static String INSERT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season , status , created_by) VALUES (?, ?, ?, ?, ? , ? , ? )";
     private static String UPDATE_SQL = "UPDATE tournament SET name = ?, start_date = ?, end_date = ?, match_category = ?, season = ? , status = ? WHERE tour_id = ?";
     private static String ADD_TEAMS_TO_TOURNAMENT = "INSERT INTO tournament_team (tour_id, team_id, points, net_run_rate) VALUES (?, ?, ?, ?)";
     private static String COUNT_BY_TEAM = "SELECT COUNT(*) FROM team WHERE team_id = ?";
@@ -273,7 +276,7 @@ public class TournamentDAO {
     
     
 	
-	private void setPreparedStatementValues(PreparedStatement pstmt, TournamentVO tourModel) throws SQLException {
+	private void setPreparedStatementValues(PreparedStatement pstmt, TournamentVO tourModel , Integer userId) throws SQLException {
 	        pstmt.setString(1, tourModel.getName());
 	        pstmt.setString(2, tourModel.getStartDate());
 	        pstmt.setString(3, tourModel.getEndDate());
@@ -282,17 +285,16 @@ public class TournamentDAO {
 	        pstmt.setString(6 , tourModel.getStatus());
 	        if (tourModel.getTourId() != null) {
 	            pstmt.setInt(7, tourModel.getTourId());
-	        }
+	        }else pstmt.setInt(7, userId);
     }
 	
 	
-	public Boolean deleteTournament(HttpServletResponse response, PrintWriter out, Integer tourId) throws Exception {
-        if (tourId == null) {
-            Extra.sendError(response, out, "Tournament ID is required");
-            return false;
-        }
+	public Boolean deleteTournament( HttpServletRequest request , PrintWriter out, Integer tourId) throws Exception {
+        if (tourId == null) 
+            throw new Exception("Tournament ID is required");
 
-        
+        if(!AuthUtil.isAuthorizedAdmin( request , "tournament", "tour_id", tourId))
+        	throw new Exception("You cannot modify other's resouce");
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(DELETE_BY_TOUR)) {
@@ -309,9 +311,10 @@ public class TournamentDAO {
         return false;
     }
 
-    public Boolean deleteAllTeamFromTour( Integer tourId) throws Exception {
+    public Boolean deleteAllTeamFromTour( HttpServletRequest request , Integer tourId) throws Exception {
         
-    	
+    	 if(!AuthUtil.isAuthorizedAdmin( request , "tournament", "tour_id", tourId))
+         	throw new Exception("You cannot modify other's resouce");
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(DELETE_TOUR_TEAM)) {
@@ -328,7 +331,10 @@ public class TournamentDAO {
         return false;
     }
 
-    public Boolean deleteTeamFromTour(Integer tourId, Integer teamId) throws Exception {
+    public Boolean deleteTeamFromTour( HttpServletRequest request,Integer tourId, Integer teamId) throws Exception {
+    	
+    	 if(!AuthUtil.isAuthorizedAdmin( request , "tournament", "tour_id", tourId))
+         	throw new Exception("You cannot modify other's resouce");
         
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement pstmt = conn.prepareStatement(DELETE_TOURTEAM_BY_TEAMID)) {
@@ -347,7 +353,9 @@ public class TournamentDAO {
     }
     
     
-    public boolean insertOrUpdateData(List<TournamentVO> tournamentsVO , Boolean isPut)throws Exception {
+    public boolean insertOrUpdateData ( HttpServletRequest request ,List<TournamentVO> tournamentsVO , Boolean isPut)throws Exception {
+    	
+    Integer userId = Integer.parseInt( AuthUtil.getUserId(request) );
     	
 	for (TournamentVO tournamentVO : tournamentsVO) {
 	            
@@ -358,6 +366,9 @@ public class TournamentDAO {
 	        	{
 	        		if(tournamentVO.getTourId() == null)
 	        			throw new Exception("TourId is required to update");
+	        		
+	        		if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tournamentVO.getTourId()))
+	        			throw new Exception("You cannot modify other's resource");
 	        	}
 	        	
 	        	Set<Integer> teamSet = new HashSet<>();
@@ -374,7 +385,7 @@ public class TournamentDAO {
 	                
 	                conn.setAutoCommit(false); 
 	                
-	                setPreparedStatementValues(pstmt, tournamentVO);
+	                setPreparedStatementValues(pstmt, tournamentVO , userId);
 	
 	                int rowsAffected = pstmt.executeUpdate();
 	                Integer tourId = tournamentVO.getTourId();
