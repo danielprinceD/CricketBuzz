@@ -54,7 +54,7 @@ public class TournamentServlet extends HttpServlet {
             
             if (pathInfo == null){
             	
-                List<TournamentVO> tournaments  = tournamentDAO.getAllTournaments();
+                List<TournamentVO> tournaments  = tournamentDAO.getAllTournaments( request);
                 
                 out.print(new Gson().toJson(tournaments));
                 return;

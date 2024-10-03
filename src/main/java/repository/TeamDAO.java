@@ -7,15 +7,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.servlet.http.HttpServletRequest;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
-import jakarta.ws.rs.core.Request;
 import model.PlayerVO;
 import model.TeamVO;
+import model.UserVO;
 import utils.AuthUtil;
 import utils.TeamRedisUtil;
 
@@ -25,7 +22,7 @@ public class TeamDAO {
     private static final String USER = "root";
     private static final String PASS = "";
     
-    private final String GET_TEAM_BY_ID = "SELECT t.team_id, t.name AS team_name, c.id AS captain_id , c.name AS captain_name, vc.id AS vice_captain_id ,vc.name AS vice_captain_name, GROUP_CONCAT(CONCAT(p.id, ':', p.name, ':' , p.rating) SEPARATOR ', ') AS players FROM team t LEFT JOIN player c ON t.captain_id = c.id LEFT JOIN player vc ON t.vice_captain_id = vc.id LEFT JOIN team_player tp ON t.team_id = tp.team_id LEFT JOIN player p ON tp.player_id = p.id WHERE t.team_id = ?  GROUP BY t.team_id ";
+    private final String GET_TEAM_BY_ID = "SELECT U.user_id , t.created_by, U.name as uname , t.date_created , U.email ,  t.team_id, t.name AS team_name, c.id AS captain_id , c.name AS captain_name, vc.id AS vice_captain_id ,vc.name AS vice_captain_name, GROUP_CONCAT(CONCAT(p.id, ':', p.name, ':' , p.rating) SEPARATOR ', ') AS players FROM team t LEFT JOIN player c ON t.captain_id = c.id LEFT JOIN player vc ON t.vice_captain_id = vc.id LEFT JOIN team_player tp ON t.team_id = tp.team_id LEFT JOIN player p ON tp.player_id = p.id LEFT JOIN user AS U ON U.user_id = t.created_by  WHERE t.team_id = ?  GROUP BY t.team_id ";
     
     public TeamVO getTeamById(int teamId) throws SQLException {
         
@@ -51,7 +48,15 @@ public class TeamDAO {
                 team.setViceCaptainName(rs.getString("vice_captain_name"));
                 team.setCaptainId(rs.getInt("captain_id"));
                 team.setViceCaptainId(rs.getInt("vice_captain_id"));
-
+                
+                UserVO creator = new UserVO();
+                creator.setId(rs.getInt("created_by"));
+                creator.setName(rs.getString("uname"));
+                creator.setDateCreated(rs.getString("date_created"));
+                creator.setEmail(rs.getString("email"));
+                
+                team.setCreator(creator);
+                
                 String playersString = rs.getString("players");
                 List<PlayerVO> players = new ArrayList<>();
                 if (playersString != null) {
@@ -74,7 +79,6 @@ public class TeamDAO {
         }
 
     }
-    
     
     public boolean addTeamAndPlayers(HttpServletRequest request , String json, Boolean isPut) throws SQLException, Exception {
 

@@ -2,17 +2,17 @@ package repository;
 
 import java.io.PrintWriter;
 import java.sql.*;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import Builder.SQL;
+import Builder.SQLBuilder;
 import model.*;
 import utils.AuthUtil;
 import utils.TeamRedisUtil;
 import utils.TournamentRedisUtil;
-import controller.*;
 
 
 public class TournamentDAO {
@@ -25,8 +25,7 @@ public class TournamentDAO {
     private static String INSERT_OR_UPDATE = "INSERT INTO tournament_team (tour_id, team_id, points, net_run_rate) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE points = VALUES(points), net_run_rate = VALUES(net_run_rate)";
     private static String DELETE_SQL = "DELETE FROM tournament_team WHERE tour_id = ? AND team_id = ?";
     private static String ADD_TEAM_TO_TOUR = "SELECT team_id FROM tournament_team WHERE tour_id = ?";
-    private static String GET_ALL_TOURNAMENT = "SELECT * FROM tournament";
-    private static String GET_TOURNAMENT_BY_ID = "SELECT * FROM tournament WHERE tour_id = ?";
+    private static String GET_TOURNAMENT_BY_ID = "SELECT T.tour_id , T.name ,T.start_date , T.end_date ,T.season , T.match_category , T.status , T.created_by , T.date_created, U.name as uname , U.email  FROM tournament as T JOIN user as U ON T.created_by = U.user_id WHERE tour_id = ?";
     private static String TEAMS_BY_TOURNAMENT_ID = "SELECT T.team_id,T.name , TT.points, TT.net_run_rate FROM tournament_team TT JOIN team T ON TT.team_id = T.team_id WHERE TT.tour_id = ?";
     private static String ADD_TOURNAMENT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season, status) VALUES (?, ?, ?, ?, ?, ?)";
     private static String INSERT_SQL = "INSERT INTO tournament (name, start_date, end_date, match_category, season , status , created_by) VALUES (?, ?, ?, ?, ? , ? , ? )";
@@ -37,13 +36,29 @@ public class TournamentDAO {
     private static String DELETE_TOUR_TEAM = "DELETE FROM tournament_team WHERE tour_id = ?";
     private static String DELETE_TOURTEAM_BY_TEAMID = "DELETE FROM tournament_team WHERE tour_id = ? AND team_id = ?";
     
-    public List<TournamentVO> getAllTournaments() throws SQLException {
+    public List<TournamentVO> getAllTournaments( HttpServletRequest request) throws SQLException {
+    	String GET_ALL_TOURNAMENT = "SELECT * FROM tournament";
+    	
+    	Enumeration<String> names = request.getParameterNames();
     	
         List<TournamentVO> tournaments = TournamentRedisUtil.getTournaments();
         
-        if(tournaments != null && tournaments.size() > 0)
+        if(!names.hasMoreElements() && tournaments != null && tournaments.size() > 0)
         	return tournaments;
-
+        
+        tournaments.clear();
+        
+        SQL sql = new SQL(new StringBuilder(GET_ALL_TOURNAMENT));
+        
+        String category = request.getParameter("matchCategory");
+        String status = request.getParameter("status");
+        
+        SQL filter = new SQLBuilder(sql).addString( "match_category" , category).addString( "status", status).build();
+        
+        GET_ALL_TOURNAMENT = filter.sqlString.toString();
+        
+        System.out.println(GET_ALL_TOURNAMENT);
+        
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
              PreparedStatement stmt = conn.prepareStatement(GET_ALL_TOURNAMENT);
              ResultSet rs = stmt.executeQuery()) {
@@ -54,6 +69,7 @@ public class TournamentDAO {
                 tournament.setName(rs.getString("name"));
                 tournament.setMatchCategory(rs.getString("match_category"));
                 tournament.setStatus(rs.getString("status"));
+                
                 tournaments.add(tournament);
             }
             
@@ -85,6 +101,15 @@ public class TournamentDAO {
                 tournament.setMatchCategory(rs.getString("match_category"));
                 tournament.setSeason(rs.getInt("season"));
                 tournament.setStatus(rs.getString("status"));
+                
+                UserVO creator = new UserVO();
+                creator.setId(rs.getInt("created_by"));
+                creator.setName(rs.getString("uname"));
+                creator.setDateCreated(rs.getString("date_created"));
+                creator.setEmail(rs.getString("email"));
+                
+                tournament.setCreator(creator);
+                
                 List<TournamentTeamVO> teams = getTeamsByTournamentId(tournament.getTourId());                
                 tournament.setTeamCount(teams.size());
             }
@@ -186,7 +211,7 @@ public class TournamentDAO {
 	    }
 	
 	
-	private void addTeamsToTour(Connection conn, Set<Integer> teamSet, int tourId , TournamentVO tourModel) throws SQLException {
+	private void addTeamsToTour(Connection conn, Set<Integer> teamSet, int tourId , TournamentVO tourModel , Boolean isPut) throws SQLException {
     	
 		Set<Integer> existingTeamIds = new HashSet<>();
 
@@ -200,9 +225,10 @@ public class TournamentDAO {
 	    }
 
 	    Set<Integer> teamsToRemove = new HashSet<>(existingTeamIds);
+	    
 	    teamsToRemove.removeAll(teamSet);
 	    	
-	    if (!teamsToRemove.isEmpty()) {
+	    if (!teamsToRemove.isEmpty() && !isPut) {
 	        
 	        try (PreparedStatement deletePstmt = conn.prepareStatement(DELETE_SQL)) {
 	            for (Integer teamId : teamsToRemove) {
@@ -397,13 +423,13 @@ public class TournamentDAO {
 	                
 	
 	                if (tourId != null) {
-	                    addTeamsToTour(conn, teamSet, tourId , tournamentVO);
+	                    addTeamsToTour(conn, teamSet, tourId , tournamentVO , isPut);
+	                    TournamentRedisUtil.invalidateTournamentById(tourId);
 	                }
 	
 	                if (rowsAffected > 0) {
 	                	
 	                	TournamentRedisUtil.invalidateAll();
-	                	
 	                	conn.commit();
 	                    return true;
 	                    

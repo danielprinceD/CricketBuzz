@@ -13,10 +13,19 @@ public class TeamVO {
     private String category;
     private String captainName;
     private String viceCaptainName;
+    private UserVO creator;
     private List<PlayerVO> players;
     private List<PlayingXIVO> playing11s;
     private Set<Integer> playersList;
     
+    public void setCreator(UserVO user) {
+    	this.creator = user;
+    }
+    
+    public UserVO getCreator() {
+    	return creator;
+    }
+   
     
    public Set<Integer> getPlayersList(){
 	   return playersList;

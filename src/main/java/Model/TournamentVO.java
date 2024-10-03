@@ -7,16 +7,23 @@ import com.google.gson.Gson;
 public class TournamentVO {
     private Integer tourId;
     private String name;
-    private String createdBy;
     private String startDate;
     private String endDate;
     private String matchCategory;
     private Integer season;
     private String status;
+    private UserVO creator;
     private List<TournamentTeamVO> participatedTeams;
     private Integer teamCount;
     
+    public void setCreator(UserVO user) {
+    	this.creator = user;
+    }
     
+    public UserVO getCreator() {
+    	return creator;
+    }
+ 
     public void setTeamCount(Integer count) {
     	this.teamCount = count;
     }

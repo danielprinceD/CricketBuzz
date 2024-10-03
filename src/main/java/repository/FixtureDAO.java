@@ -2,12 +2,8 @@ package repository;
 
 import java.sql.*;
 import java.util.*;
-
 import javax.servlet.http.HttpServletRequest;
-
 import org.json.JSONObject;
-
-import jakarta.ws.rs.core.Request;
 import model.FixtureVO;
 import model.MatchDetailVO;
 import model.PlayingXIVO;
@@ -240,8 +236,14 @@ public class FixtureDAO {
             	if(isPut)
             	{
             		
+            		
             		if(!isValidFixtureID(fm , conn))
             			throw new SQLException("Fixture ID " + fm.getFixtureId() + " is not a fixture");
+            		
+            		tourId = getTournamentIdByFixtureId(fm.getFixtureId());
+            		if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId ))
+                		throw new Exception("You cannot modify other's resource");
+            		
             		if(!canUpdate(fm , conn))
             			throw new SQLException("Venue ID " + fm.getVenueId() +  " is already occupied on date " + fm.getMatchDate());
             	}
@@ -258,14 +260,7 @@ public class FixtureDAO {
             try (PreparedStatement pstmt = conn.prepareStatement(sql ,Statement.RETURN_GENERATED_KEYS)) {
             	
                 for (FixtureVO fixtureModel : fixtureModelList) {
-                	
-                	if(isPut)
-                	{
-                		tourId = getTournamentIdByFixtureId(fixtureModel.getFixtureId());
-                		if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId ))
-                    		throw new Exception("You cannot modify other's resource");
-                	}
-                	
+
                 	if(!checkTeamInTournament(fixtureModel.getTeam1Id() , tourId))
                 		throw new SQLException("Team 1 ID " + fixtureModel.getTeam1Id() + " is not in tournament");
                 	

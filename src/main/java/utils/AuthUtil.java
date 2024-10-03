@@ -52,6 +52,9 @@ public class AuthUtil {
 			
 			token = token.substring(7);
 			
+			if(!JWTRedisUtil.isTokenActive(token))
+				return null;
+			
 			Map<String, String> details  = new HashMap<>();
 			
 			DecodedJWT verifier = verifyToken(token);
@@ -72,6 +75,10 @@ public class AuthUtil {
 		
 		String sql = "SELECT  created_by from " + table + " WHERE " + field + " =  ?";
 		 
+		
+		if(isSuperAdmin(request))
+			return true;
+		
 		try (Connection connection = DriverManager.getConnection(DB_URL, USER, PASS);
 		         PreparedStatement pstmt = connection.prepareStatement(sql)) {
 		        
@@ -82,10 +89,7 @@ public class AuthUtil {
 		                String createdBy = resultSet.getString("created_by");
 		                
 		                String userId = getUserId(request);
-		                String role = getUserRole(request);
 		                
-		                if(role != null && role.equals("SUPERUSER"))
-		                	return true;
 		                
 		                if(userId == null || createdBy == null )
 		                	return false;
@@ -117,19 +121,19 @@ public class AuthUtil {
 			
 		}
 	}
-	public static String getUserRole(HttpServletRequest request) throws Exception
+	public static Boolean isSuperAdmin(HttpServletRequest request) throws Exception
 	{
 		try {
 			
 			Map<String , String> details = getDetails(request);
-			if(details == null )return null;
+			if(details == null )return false;
 			
-			String createdBy = details.get("role");
-			if(createdBy == null)
-				return null;
+			String role = details.get("role");
 			
-			return createdBy;
+			if(role.equals("SUPERADMIN"))
+				return true;
 			
+			return false;
 		}
 		finally {
 			

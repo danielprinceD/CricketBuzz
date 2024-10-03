@@ -15,6 +15,12 @@ public class TournamentRedisUtil {
 	
 	private static final String TOURNAMENT_REDIS_PREFIX = "tournaments:";
 	
+	public static void invalidateTournamentById(Integer tourId) {
+		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){
+			System.out.println(1);
+			jedis.del(TOURNAMENT_REDIS_PREFIX + tourId + ":teams:all");
+		}
+	}
 	
 	public static void invalidateAll() {
 		try (Jedis jedis =  RedisConfig.getJedis().getResource() ){

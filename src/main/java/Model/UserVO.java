@@ -1,15 +1,28 @@
 package model;
 
 public class UserVO {
-    private int user_id = -1;
+    private Integer user_id;
     private String name;
     private String email;
     private String password;
     private AddressVO address;
-    private String role = "USER";
-
-    public int getId() {
+    private String role;
+    private String dateCreated;
+    
+    public void setDateCreated(String date)
+    {
+    	this.dateCreated = date;
+    }
+    
+    public String getDateCreated()
+    {
+    	return dateCreated;
+    }
+    public Integer getId() {
     	return user_id;
+    }
+    public void setId(Integer id) {
+    	user_id = id;
     }
     
     public String getName() {

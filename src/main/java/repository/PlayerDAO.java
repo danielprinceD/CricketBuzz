@@ -1,9 +1,12 @@
 package repository;
 
 import model.*;
+import utils.AuthUtil;
 import utils.PlayerRedisUtil;
 import java.sql.*;
 import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
 
 public class PlayerDAO {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/CricketBuzz";
@@ -43,7 +46,11 @@ public class PlayerDAO {
         return players;
     }
 
-   	    public boolean insertPlayer(PlayerVO player) throws SQLException {
+   	    public boolean insertPlayer(HttpServletRequest request ,PlayerVO player) throws Exception {
+   	    	
+   	    	if(!AuthUtil.isSuperAdmin(request))
+   	    		throw new Exception("You don't have access to create player");
+   	    		
    	    	
 	        int addressId = addressDAO.insertAddress(player.getAddress());
 	        if (addressId > 0) {
@@ -99,10 +106,13 @@ public class PlayerDAO {
    	}
 
    	    
-	    public boolean updatePlayer(PlayerVO player) throws SQLException {
+	    public boolean updatePlayer(HttpServletRequest request ,PlayerVO player) throws Exception {
 	        
 	    	if(player.getId() == null)
 	    		throw new SQLException("Player ID must required");
+	    	
+	    	if(!AuthUtil.isSuperAdmin(request))
+   	    		throw new Exception("You don't have access to update player");
 	    	
 	    	Integer addressId = getOldAddressId(player.getId());
 	    	
@@ -137,10 +147,13 @@ public class PlayerDAO {
 	    }
 	    
 	    
-	    public boolean deletePlayer(int playerId) throws SQLException {
+	    public boolean deletePlayer( HttpServletRequest request,int playerId) throws Exception {
 	       
 	    	int addressId = getOldAddressId(playerId);
 	        
+	    	if(!AuthUtil.isSuperAdmin(request))
+   	    		throw new Exception("You don't have access to delete player");
+	    	
 	        if (addressId < 0) {
 	            throw new SQLException("Cannot find address ID for deletion");
 	        }

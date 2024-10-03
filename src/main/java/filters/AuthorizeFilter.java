@@ -2,27 +2,22 @@ package filters;
 
 import java.io.IOException;
 import java.util.Map;
-
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 
 import controller.Extra;
 import utils.AuthUtil;
-import utils.CookiesUtil;
 
 public class AuthorizeFilter extends HttpFilter implements Filter {
-   
+	private static final long serialVersionUID = 1L;
 
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 		
@@ -41,7 +36,7 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 		String id = details.get("userId");
 		String role = details.get("role");
 		
-        if(role.equalsIgnoreCase("ADMIN"))
+        if(role.equalsIgnoreCase("ADMIN") || role.equals("SUPERADMIN"))
         {
         	chain.doFilter(request, response);
         	return;
@@ -73,6 +68,10 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 			}
 		}
 		
+		}
+		catch (JWTVerificationException e) {
+			Extra.sendError(res, res.getWriter(), "Token is Invalid");
+			return;
 		}
 		catch (Exception e) {
 			e.printStackTrace();

@@ -2,12 +2,10 @@ package controller;
 
 import java.io.IOException;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import utils.CookiesUtil;
+import utils.JWTRedisUtil;
 
 public class LogoutServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -16,19 +14,17 @@ public class LogoutServlet extends HttpServlet {
     
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		
-		Cookie cookie = CookiesUtil.getCookies(request.getCookies());
-		System.out.println(cookie.getValue());
-		if(cookie == null || cookie.getValue().isEmpty())
+		String header = request.getHeader("Authorization");
+		
+		if(header != null && header.length() > 7)
 		{
-			Extra.sendError(response, response.getWriter() , "You cannot logout");
+			header = header.substring(7);
+			JWTRedisUtil.deactivateToken(header);
+			Extra.sendSuccess(response, response.getWriter(), "Logged out successfully");
 			return;
 		}
-		cookie.setMaxAge(0);
-		cookie.setPath("/");
-		cookie.setSecure(false);
-		response.addCookie(cookie);
+		Extra.sendError(response, response.getWriter(), "Logout failed");
 		
-		Extra.sendError(response, response.getWriter(), "Logged out successfully");
 	}
 
 

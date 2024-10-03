@@ -9,18 +9,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import javax.servlet.SessionCookieConfig;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
 import org.json.JSONObject;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import model.*;
 import utils.AuthUtil;
+import utils.JWTRedisUtil;
 import utils.PasswordUtil;
 import controller.*;
 
@@ -232,14 +228,16 @@ public class UserDAO {
                 
                 
                 String generatedToken =  AuthUtil.generateToken( id+"", role);
-                Cookie cookie = new Cookie("token", generatedToken);
-                cookie.setSecure(false);
-                cookie.setPath("/");
-                
-                response.addCookie(cookie); 
-                response.setHeader("token", generatedToken);
-                
+//                Cookie cookie = new Cookie("token", generatedToken);
+//                cookie.setSecure(false);
+//                cookie.setPath("/");
+//                
+//                response.addCookie(cookie); 
+//                response.setHeader("token", generatedToken);
+//                
                 JSONObject output = new JSONObject();
+                
+                JWTRedisUtil.setAccessToken( generatedToken , 30 * 60 * 1000);
                 
                 output.put("message", "login successful");
                 output.put("token", generatedToken);

@@ -110,9 +110,9 @@ public class PlayerServlet extends HttpServlet {
 	                if (isPut) {
 	                	
 	                	
-	                	success = playerDAO.updatePlayer(player);
+	                	success = playerDAO.updatePlayer( request,player);
 	                } else {
-	                	success = playerDAO.insertPlayer(player);
+	                	success = playerDAO.insertPlayer( request ,player);
 	                }
 
 	                if (!success) {
@@ -170,7 +170,7 @@ public class PlayerServlet extends HttpServlet {
 	    PlayerDAO playerDAO = new PlayerDAO();
 	    
 	    try {
-	        playerDAO.deletePlayer(playerId);
+	        playerDAO.deletePlayer(request ,playerId);
 	        
 	         Extra.sendSuccess(response, out, "Deleted Successfully");
 	        
