@@ -107,14 +107,7 @@ public class PlayingXIServlet extends HttpServlet {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.getWriter().println("fixture_id is required.");
         }
-    }
-    
-   
-    
-  
-    
-    
-    
+    } 
     
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -159,7 +152,7 @@ public class PlayingXIServlet extends HttpServlet {
             int fixtureIdInt = Integer.parseInt(fixtureId);
             int teamIdInt = Integer.parseInt(teamId);
 
-            playingXIDAO.insertPlaying11(playing11List, fixtureIdInt, teamIdInt);
+            playingXIDAO.insertPlaying11(request , playing11List, fixtureIdInt, teamIdInt);
 
             PrintWriter out = response.getWriter();
             out.println("{\"message\": \"Player data inserted successfully.\"}");
@@ -169,7 +162,10 @@ public class PlayingXIServlet extends HttpServlet {
             response.getWriter().println("{\"error\": \"Database error: " + e.getMessage() + "\"}");
         } catch (NumberFormatException e) {
             response.getWriter().println("{\"error\": \"Invalid number format: " + e.getMessage() + "\"}");
-        }
+        } catch (Exception e) {
+        	Extra.sendError(response, response.getWriter() , e.getMessage() );
+			e.printStackTrace();
+		}
     }
 
     

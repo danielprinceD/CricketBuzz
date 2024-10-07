@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 public class PlayingXIVO {
     
     private Integer fixture_id ;
+    private Integer balls_bowled;
     private Integer player_id;
     private String role;
     private Integer runs;
@@ -66,6 +67,13 @@ public class PlayingXIVO {
 
     public void setBallsFaced(Integer ballsFaced) {
         this.balls_faced = ballsFaced;
+    }
+    public int getBallsBowled() {
+        return balls_bowled;
+    }
+
+    public void setBallsBowled(Integer ballsFaced) {
+        this.balls_bowled = ballsFaced;
     }
 
     public Integer getFours() {

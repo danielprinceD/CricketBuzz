@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.swing.event.TableColumnModelListener;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import model.*;
@@ -142,7 +144,7 @@ public class PlayingXIDAO {
     	if(!AuthUtil.isAuthorizedAdmin(request, "tournament", "tour_id", tourId)) 
     		throw new Exception("You cannot modify another's resource");
     	
-    	String sql = "UPDATE playing_11 SET role = ?, runs = ?, balls_faced = ?, fours = ?, sixes = ?, fifties = ?, hundreds = ?, wickets_taken = ? "
+    	String sql = "UPDATE playing_11 SET role = ?, runs = ?, balls_faced = ?, fours = ?, sixes = ?, fifties = ?, hundreds = ?, wickets_taken = ? , balls_bowled = ? "
                    + "WHERE fixture_id = ? AND player_id = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
@@ -175,8 +177,9 @@ public class PlayingXIDAO {
                 pstmt.setInt(6, model.getFifties());
                 pstmt.setInt(7, model.getHundreds());
                 pstmt.setInt(8, model.getWicketsTaken());
-                pstmt.setInt(9, fixtureId);
-                pstmt.setInt(10, model.getPlayerId());
+                pstmt.setInt(9, model.getBallsBowled());
+                pstmt.setInt(10, fixtureId);
+                pstmt.setInt(11, model.getPlayerId());
                 pstmt.addBatch();
             }
             
@@ -253,6 +256,7 @@ public class PlayingXIDAO {
 	                    playing11.put("50s" , rs.getInt("fifties"));
 	                    playing11.put("100s" , rs.getInt("hundreds"));
 	                    playing11.put("wkt_taken" , rs.getInt("wickets_taken"));
+	                    playing11.put("balls_bowled", rs.getInt("balls_bowled"));
 	                    playing11Array.put(playing11);
 	                }
 
@@ -356,7 +360,7 @@ public class PlayingXIDAO {
 	        }
 	    	
 	    	if(!AuthUtil.isAuthorizedAdmin(request, "team", "team_id", teamId))
-	    		throw new Exception("You cannot modify another's resource");
+	    		throw new Exception("You cannot modify anothe~r's resource");
 
 	        String sql = "INSERT INTO playing_11 (fixture_id, player_id, team_id, role) VALUES (?, ?, ?, ?)";
 
