@@ -20,18 +20,19 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 	private static final long serialVersionUID = 1L;
 
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-		
 		HttpServletRequest req = (HttpServletRequest)request;
 		HttpServletResponse res = (HttpServletResponse)response;
-		
 		String method = req.getMethod();
-
 		try {
 		
 		Map<String, String> details = AuthUtil.getDetails(req);
 		
 		if(details == null)
-			throw new Exception("You're not authorized");
+		{
+			chain.doFilter(request, response);
+			return;
+//			throw new Exception("You're not authorized");
+		}
 		
 		String id = details.get("userId");
 		String role = details.get("role");
@@ -80,7 +81,6 @@ public class AuthorizeFilter extends HttpFilter implements Filter {
 		}
 		
 		Extra.sendError(res, res.getWriter() , "Unauthorized Access");
-		
 	}
 
 

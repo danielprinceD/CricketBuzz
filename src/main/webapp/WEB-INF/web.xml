@@ -17,7 +17,10 @@
         <servlet-class>controller.TeamServlet</servlet-class>
     </servlet>
     
-    
+    <servlet>
+        <servlet-name>Stats</servlet-name>
+        <servlet-class>controller.StatsServlet</servlet-class>
+    </servlet>
      <servlet>
         <servlet-name>Fixtures</servlet-name>
         <servlet-class>controller.FixtureServlet</servlet-class>
@@ -138,14 +141,24 @@
         <url-pattern>/teams/*</url-pattern>
     </servlet-mapping>
     
-    
+    <servlet-mapping>
+        <servlet-name>Stats</servlet-name>
+        <url-pattern>/stats/*</url-pattern>
+    </servlet-mapping>
     
    <servlet-mapping>
         <servlet-name>Venues</servlet-name>
         <url-pattern>/venues/*</url-pattern>
     </servlet-mapping> 
     
-		
+		<filter>
+			<filter-name>CORSFilter</filter-name>
+			<filter-class>filters.CORSFilter</filter-class>
+		</filter>
+		<filter-mapping>
+			<filter-name>CORSFilter</filter-name>
+			<url-pattern>/*</url-pattern>
+		</filter-mapping>
 		<filter>
 			<filter-name>AuthorizeFilter</filter-name>
 			<filter-class>filters.AuthorizeFilter</filter-class>
@@ -163,8 +176,10 @@
 			 <url-pattern>/match-details</url-pattern>
 			  <url-pattern>/user/logout</url-pattern>
 			  <url-pattern>/teams/*</url-pattern>
-			 
+			 <url-pattern>/stats/*</url-pattern>
 		
 		</filter-mapping>
+		
+		
     
 </web-app >

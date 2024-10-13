@@ -6,18 +6,18 @@ import com.google.gson.Gson;
 
 public class PlayingXIVO {
     
-    private Integer fixture_id ;
-    private Integer balls_bowled;
-    private Integer player_id;
+    private Integer fixtureId ;
+    private Integer ballsBowled;
+    private Integer playerId;
     private String role;
     private Integer runs;
-    private Integer balls_faced;
+    private Integer ballsFaced;
     private Integer fours;
     private Integer sixes;
     private Integer fifties;
     private Integer hundreds;
-    private Integer wickets_taken;
-    private Integer team_id;
+    private Integer wicketsTaken;
+    private Integer teamId;
     private String playerName;
     
     public void setName(String name)
@@ -30,19 +30,19 @@ public class PlayingXIVO {
     }
 
     public int getFixtureId() {
-        return fixture_id;
+        return fixtureId;
     }
 
     public void setFixtureId(Integer fixtureId) {
-        this.fixture_id = fixtureId;
+        this.fixtureId = fixtureId;
     }
 
     public Integer getPlayerId() {
-        return player_id;
+        return playerId;
     }
 
     public void setPlayerId(Integer playerId) {
-        this.player_id = playerId;
+        this.playerId = playerId;
     }
 
     public String getRole() {
@@ -62,18 +62,18 @@ public class PlayingXIVO {
     }
 
     public int getBallsFaced() {
-        return balls_faced;
+        return ballsFaced;
     }
 
     public void setBallsFaced(Integer ballsFaced) {
-        this.balls_faced = ballsFaced;
+        this.ballsFaced = ballsFaced;
     }
     public int getBallsBowled() {
-        return balls_bowled;
+        return ballsBowled;
     }
 
     public void setBallsBowled(Integer ballsFaced) {
-        this.balls_bowled = ballsFaced;
+        this.ballsBowled = ballsFaced;
     }
 
     public Integer getFours() {
@@ -109,19 +109,19 @@ public class PlayingXIVO {
     }
 
     public Integer getWicketsTaken() {
-        return wickets_taken;
+        return wicketsTaken;
     }
 
     public void setWicketsTaken(Integer wicketsTaken) {
-        this.wickets_taken = wicketsTaken;
+        this.wicketsTaken = wicketsTaken;
     }
 
     public Integer getTeamId() {
-        return team_id;
+        return teamId;
     }
 
     public void setTeamId(Integer teamId) {
-        this.team_id = teamId;
+        this.teamId = teamId;
     }
 
     public static PlayingXIVO fromJson(String jsonString) {

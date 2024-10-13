@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import com.google.gson.Gson;
 import repository.*;
-import utils.AuthUtil;
 import utils.PathMatcherUtil;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
